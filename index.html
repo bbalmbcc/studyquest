@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ja" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta name="description" content="高校生向け定期試験対策問題サイト - オフライン対応">
+<title>StudyQuest - 定期試験対策</title>
+<link rel="stylesheet" href="style.css?v=3">
+</head>
+<body>
+<div class="app-container">
+<main class="main-content">
+
+<!-- ===== HOME ===== -->
+<section id="screen-home" class="screen active">
+<div class="dashboard-header">
+  <h1>📚 StudyQuest</h1>
+  <p>定期試験対策問題アプリ</p>
+</div>
+<div class="stats-row stagger" id="home-stats">
+  <div class="card stat-card"><div class="stat-icon">📝</div><div class="stat-number" id="stat-total">0</div><div class="stat-desc">総回答数</div></div>
+  <div class="card stat-card"><div class="stat-icon">✅</div><div class="stat-number" id="stat-correct">0</div><div class="stat-desc">正解数</div></div>
+  <div class="card stat-card"><div class="stat-icon">📊</div><div class="stat-number" id="stat-rate">0%</div><div class="stat-desc">正答率</div></div>
+  <div class="card stat-card"><div class="stat-icon">🔥</div><div class="stat-number" id="stat-streak">0</div><div class="stat-desc">連続正解</div></div>
+</div>
+<div class="quick-actions stagger">
+  <button class="card btn-block" onclick="App.quickStart()" id="btn-quick-start" style="text-align:center;padding:20px">
+    <div style="font-size:1.5rem;margin-bottom:8px">🚀</div><div style="font-weight:600">クイックスタート</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">ランダム出題</div>
+  </button>
+  <button class="card btn-block" onclick="App.startWrongReview()" id="btn-wrong-review" style="text-align:center;padding:20px">
+    <div style="font-size:1.5rem;margin-bottom:8px">🔄</div><div style="font-weight:600">間違い復習</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px" id="wrong-count-label">0問</div>
+  </button>
+  <button class="card btn-block" onclick="UI.openModal('modal-generate')" id="btn-generate" style="text-align:center;padding:20px">
+    <div style="font-size:1.5rem;margin-bottom:8px">✨</div><div style="font-weight:600">問題生成</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">テキストから作成</div>
+  </button>
+</div>
+<div class="recent-activity mt-24">
+  <h2>最近の学習</h2>
+  <div id="recent-list" class="mt-8"><p class="text-muted" style="padding:20px;text-align:center">まだ学習記録がありません</p></div>
+</div>
+</section>
+
+<!-- ===== SUBJECTS ===== -->
+<section id="screen-subjects" class="screen">
+<h1 style="font-size:1.5rem;font-weight:700;margin-bottom:20px">教科を選択</h1>
+<div class="category-filter" id="category-filter"></div>
+<div class="card-grid stagger" id="subjects-grid"></div>
+</section>
+
+<!-- ===== QUIZ ===== -->
+<section id="screen-quiz" class="screen">
+<div class="quiz-header">
+  <div><span id="quiz-subject-name" style="font-weight:600"></span> <span id="quiz-unit-name" class="text-muted" style="font-size:.85rem"></span></div>
+  <button class="btn btn-sm btn-secondary" onclick="App.quitQuiz()">終了</button>
+</div>
+<div class="quiz-progress"><div class="quiz-progress-fill" id="quiz-progress-fill"></div></div>
+<div style="text-align:center;margin-bottom:12px"><span id="quiz-progress-text" class="text-muted" style="font-size:.85rem"></span></div>
+<div id="quiz-area"></div>
+<div id="quiz-feedback" class="hidden"></div>
+<div id="quiz-actions" class="text-center mt-24 hidden">
+  <button class="btn btn-primary" id="btn-next-question" onclick="App.nextQuestion()">次の問題</button>
+</div>
+</section>
+
+<!-- ===== RESULTS ===== -->
+<section id="screen-results" class="screen">
+<div class="text-center">
+  <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:8px">結果発表</h1>
+  <div class="result-score-circle" id="result-circle" style="--score:0">
+    <div class="result-score-inner"><div class="result-score-value" id="result-score">0</div><div class="result-score-label">点</div></div>
+  </div>
+</div>
+<div class="result-stats" id="result-stats-row">
+  <div class="result-stat card"><div class="stat-value" id="result-total" style="color:var(--accent)">0</div><div class="stat-label">問題数</div></div>
+  <div class="result-stat card"><div class="stat-value" id="result-correct" style="color:var(--correct)">0</div><div class="stat-label">正解</div></div>
+  <div class="result-stat card"><div class="stat-value" id="result-incorrect" style="color:var(--incorrect)">0</div><div class="stat-label">不正解</div></div>
+</div>
+<div class="btn-group justify-center mt-24" style="justify-content:center">
+  <button class="btn btn-primary" onclick="App.retryQuiz()">もう一度</button>
+  <button class="btn btn-secondary" onclick="App.retryWrong()">間違いだけ復習</button>
+  <button class="btn btn-secondary" onclick="UI.navigateTo('home')">ホームへ</button>
+</div>
+<div class="mt-24"><h2 style="font-size:1.1rem;font-weight:600;margin-bottom:12px">解答一覧</h2><div id="result-review-list"></div></div>
+</section>
+
+<!-- ===== SETTINGS ===== -->
+<section id="screen-settings" class="screen">
+<h1 style="font-size:1.5rem;font-weight:700;margin-bottom:24px">設定</h1>
+<div class="settings-section card">
+  <h2>表示</h2>
+  <div class="setting-row">
+    <div class="setting-info"><div class="setting-name">ダークモード</div><div class="setting-desc">ダーク/ライトテーマを切り替え</div></div>
+    <div class="toggle active" id="toggle-theme" onclick="App.toggleTheme(this)"></div>
+  </div>
+  <div class="setting-row">
+    <div class="setting-info"><div class="setting-name">解説を自動表示</div><div class="setting-desc">回答後に解説を表示</div></div>
+    <div class="toggle active" id="toggle-explanation" onclick="App.toggleSetting(this,'showExplanation')"></div>
+  </div>
+</div>
+<div class="settings-section card">
+  <h2>出題設定</h2>
+  <div class="setting-row">
+    <div class="setting-info"><div class="setting-name">出題数</div><div class="setting-desc">1回のクイズで出題される問題数</div></div>
+    <select class="select" style="width:80px" id="setting-count" onchange="App.updateQuestionCount(this.value)">
+      <option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option>
+    </select>
+  </div>
+</div>
+<div class="settings-section card">
+  <h2>データ管理</h2>
+  <div style="display:flex;flex-direction:column;gap:10px;padding-top:8px">
+    <button class="btn btn-secondary btn-block" onclick="App.exportData()">📤 データをエクスポート</button>
+    <button class="btn btn-secondary btn-block" onclick="document.getElementById('import-file').click()">📥 データをインポート</button>
+    <input type="file" id="import-file" accept=".json" class="hidden" onchange="App.importData(this)">
+    <button class="btn btn-danger btn-block" onclick="App.clearAllData()">🗑️ すべてのデータを削除</button>
+  </div>
+  <div class="mt-16 text-muted" style="font-size:.8rem">使用容量: <span id="storage-usage">0 KB</span></div>
+</div>
+</section>
+</main>
+
+<!-- NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0a1 1 0 01-1-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 01-1 1"/></svg><span class="nav-label">ホーム</span></button>
+  <button class="nav-item" data-nav="subjects"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg><span class="nav-label">教科</span></button>
+  <button class="nav-item" data-nav="quiz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/></svg><span class="nav-label">クイズ</span></button>
+  <button class="nav-item" data-nav="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><circle cx="12" cy="12" r="3"/></svg><span class="nav-label">設定</span></button>
+</nav>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="modal-subject-setup">
+<div class="modal-content">
+  <div class="modal-header"><h2 id="setup-subject-title">出題設定</h2><button class="modal-close" onclick="UI.closeModal('modal-subject-setup')">✕</button></div>
+  <div class="form-group"><label class="form-label">単元を選択</label><select class="select" id="setup-unit"><option value="all">すべて</option></select></div>
+  <div class="form-group"><label class="form-label">問題タイプ</label>
+    <div class="btn-group"><button class="btn btn-sm btn-secondary active" data-type="all" onclick="App.setQuizType(this)">すべて</button><button class="btn btn-sm btn-secondary" data-type="選択" onclick="App.setQuizType(this)">選択式</button><button class="btn btn-sm btn-secondary" data-type="記述" onclick="App.setQuizType(this)">記述式</button><button class="btn btn-sm btn-secondary" data-type="○×" onclick="App.setQuizType(this)">○×</button></div>
+  </div>
+  <div class="form-group"><label class="form-label">難易度</label>
+    <div class="btn-group"><button class="btn btn-sm btn-secondary active" data-diff="all" onclick="App.setDifficulty(this)">すべて</button><button class="btn btn-sm btn-secondary" data-diff="1" onclick="App.setDifficulty(this)">基礎</button><button class="btn btn-sm btn-secondary" data-diff="2" onclick="App.setDifficulty(this)">標準</button><button class="btn btn-sm btn-secondary" data-diff="3" onclick="App.setDifficulty(this)">応用</button></div>
+  </div>
+  <button class="btn btn-primary btn-block mt-16" onclick="App.startQuizFromSetup()">スタート</button>
+  <button class="btn btn-secondary btn-block mt-8" onclick="App.openQuestionList()">問題一覧を見る</button>
+</div>
+</div>
+
+<div class="modal" id="modal-question-list">
+<div class="modal-content" style="max-width:800px">
+  <div class="modal-header"><h2 id="qlist-title">問題一覧</h2><button class="modal-close" onclick="UI.closeModal('modal-question-list')">✕</button></div>
+  <div class="qlist-stats text-muted mb-16" id="qlist-stats"></div>
+  <div id="qlist-container" style="max-height:60vh;overflow-y:auto;padding-right:8px"></div>
+</div>
+</div>
+
+<div class="modal" id="modal-generate">
+<div class="modal-content">
+  <div class="modal-header"><h2>問題を自動生成</h2><button class="modal-close" onclick="UI.closeModal('modal-generate')">✕</button></div>
+  <div class="form-group"><label class="form-label">教科</label><select class="select" id="gen-subject"></select></div>
+  <div class="form-group"><label class="form-label">単元</label><select class="select" id="gen-unit"><option value="">指定なし</option></select></div>
+  <div class="form-group"><label class="form-label">テキストを入力</label>
+    <textarea class="textarea" id="gen-text" placeholder="学習内容をここに貼り付けてください&#10;例: 光合成は植物が光エネルギーを使って有機物を合成する反応である&#10;&#10;「キーワード：説明」や「A は B である」の形式が効果的です" rows="8"></textarea>
+  </div>
+  <div class="form-group"><label class="form-label">生成する問題タイプ</label>
+    <div class="btn-group"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked value="選択">選択式</label><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked value="記述">記述式</label><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked value="○×">○×</label></div>
+  </div>
+  <button class="btn btn-primary btn-block" onclick="App.generateQuestions()">✨ 問題を生成</button>
+  <div id="gen-preview" class="mt-16 hidden"></div>
+</div>
+</div>
+
+<div class="modal" id="modal-confirm">
+<div class="modal-content" style="max-width:400px;text-align:center">
+  <p class="confirm-message" style="font-size:1.1rem;margin:24px 0"></p>
+  <div class="btn-group" style="justify-content:center"><button class="btn btn-danger btn-confirm-ok">実行</button><button class="btn btn-secondary btn-confirm-cancel">キャンセル</button></div>
+</div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="modules/storage.js?v=2"></script>
+<script src="modules/ui.js?v=2"></script>
+<script src="modules/questionGenerator.js?v=2"></script>
+<script src="script.js?v=3"></script>
+</body>
+</html>
