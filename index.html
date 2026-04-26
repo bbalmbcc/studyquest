@@ -141,6 +141,7 @@
   </div>
   <button class="btn btn-primary btn-block mt-16" onclick="App.startQuizFromSetup()">スタート</button>
   <button class="btn btn-secondary btn-block mt-8" onclick="App.openQuestionList()">問題一覧を見る</button>
+  <button class="btn btn-secondary btn-block mt-8" id="btn-vocab-list" onclick="App.openVocabList()" style="display:none">📖 単語一覧を見る</button>
 </div>
 </div>
 
@@ -149,6 +150,15 @@
   <div class="modal-header"><h2 id="qlist-title">問題一覧</h2><button class="modal-close" onclick="UI.closeModal('modal-question-list')">✕</button></div>
   <div class="qlist-stats text-muted mb-16" id="qlist-stats"></div>
   <div id="qlist-container" style="max-height:60vh;overflow-y:auto;padding-right:8px"></div>
+</div>
+</div>
+
+<div class="modal" id="modal-vocab-list">
+<div class="modal-content" style="max-width:900px">
+  <div class="modal-header"><h2 id="vocab-title">単語一覧</h2><button class="modal-close" onclick="UI.closeModal('modal-vocab-list')">✕</button></div>
+  <div class="form-group"><label class="form-label">単元を選択</label><select class="select" id="vocab-unit-select" onchange="App.renderVocabUnit()"><option value="all">すべて</option></select></div>
+  <div class="vocab-stats text-muted mb-16" id="vocab-stats"></div>
+  <div id="vocab-container" style="max-height:55vh;overflow-y:auto;padding-right:8px"></div>
 </div>
 </div>
 
@@ -181,5 +191,13 @@
 <script src="modules/ui.js?v=2"></script>
 <script src="modules/questionGenerator.js?v=2"></script>
 <script src="script.js?v=3"></script>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="nav-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="var(--accent)" />
+      <stop offset="100%" stop-color="var(--accent-secondary)" />
+    </linearGradient>
+  </defs>
+</svg>
 </body>
 </html>

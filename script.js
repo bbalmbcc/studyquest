@@ -37,12 +37,12 @@ window.App = (function () {
   }
 
   function getCategoryColor(cat) {
-    const colors = { '数学': '#6C63FF', '国語': '#FF6B9D', '理科': '#00D4AA', '英語': '#FFB347', '社会': '#4ECDC4', '情報': '#45B7D1', '家庭': '#F7DC6F' };
+    const colors = { '数学': '#6C63FF', '国語': '#FF6B9D', '理科': '#00D4AA', '英語': '#FFB347', '社会': '#4ECDC4', '情報': '#45B7D1', '家庭': '#F7DC6F', '単語帳': '#E056A0' };
     return colors[cat] || '#6C63FF';
   }
 
   function getCategoryEmoji(cat) {
-    const emojis = { '数学': '∑', '国語': '文', '理科': '🧪', '英語': 'A', '社会': '🌍', '情報': '💻', '家庭': '🏠' };
+    const emojis = { '数学': '∑', '国語': '文', '理科': '🧪', '英語': 'A', '社会': '🌍', '情報': '💻', '家庭': '🏠', '単語帳': '📖' };
     return emojis[cat] || '📚';
   }
 
@@ -124,6 +124,9 @@ window.App = (function () {
     difficultyFilter = 'all';
     document.querySelectorAll('[data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === 'all'));
     document.querySelectorAll('[data-diff]').forEach(b => b.classList.toggle('active', b.dataset.diff === 'all'));
+    // 単語帳教科の場合は「単語一覧を見る」ボタンを表示
+    const vocabBtn = document.getElementById('btn-vocab-list');
+    vocabBtn.style.display = (subjectId === 'bricks1' || subjectId === 'kobun330') ? 'block' : 'none';
     UI.openModal('modal-subject-setup');
   }
 
@@ -513,11 +516,62 @@ window.App = (function () {
   // === 起動 ===
   document.addEventListener('DOMContentLoaded', init);
 
+  // === 単語一覧 ===
+  let vocabData = {};
+
+  async function openVocabList() {
+    const subj = subjects.find(s => s.id === selectedSubjectId);
+    if (!subj) return;
+    const file = selectedSubjectId === 'bricks1' ? 'data/vocab_bricks1.json' : 'data/vocab_kobun330.json';
+    try {
+      const res = await fetch(file + '?t=' + Date.now());
+      vocabData = await res.json();
+    } catch(e) { UI.showToast('単語データを読み込めませんでした', 'error'); return; }
+
+    document.getElementById('vocab-title').textContent = subj.name + ' - 単語一覧';
+    const unitSel = document.getElementById('vocab-unit-select');
+    unitSel.innerHTML = '<option value="all">すべて</option>' + subj.units.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('');
+    renderVocabUnit();
+    UI.openModal('modal-vocab-list');
+  }
+
+  function renderVocabUnit() {
+    const unitId = document.getElementById('vocab-unit-select').value;
+    const subj = subjects.find(s => s.id === selectedSubjectId);
+    const container = document.getElementById('vocab-container');
+    const statsEl = document.getElementById('vocab-stats');
+    let html = '';
+    let totalCount = 0;
+
+    const unitsToShow = unitId === 'all' ? Object.keys(vocabData.units) : [unitId];
+    const isBricks = selectedSubjectId === 'bricks1';
+
+    for (const uid of unitsToShow) {
+      const words = vocabData.units[uid];
+      if (!words) continue;
+      const unitInfo = subj ? subj.units.find(u => u.id === uid) : null;
+      const unitName = unitInfo ? unitInfo.name : uid;
+      totalCount += words.length;
+
+      html += '<div class="vocab-unit-section">';
+      html += '<h3 class="vocab-unit-title">' + escapeHtml(unitName) + ' <span class="text-muted" style="font-size:0.85rem;font-weight:400">(' + words.length + '語)</span></h3>';
+      html += '<div class="vocab-table"><div class="vocab-table-header"><span>' + (isBricks ? '英単語' : '古語') + '</span><span>' + (isBricks ? '意味' : '現代語訳') + '</span></div>';
+      for (const [word, meaning] of words) {
+        html += '<div class="vocab-row"><span class="vocab-word">' + escapeHtml(word) + '</span><span class="vocab-meaning">' + escapeHtml(meaning) + '</span></div>';
+      }
+      html += '</div></div>';
+    }
+
+    statsEl.textContent = '全 ' + totalCount + ' 語';
+    container.innerHTML = html || '<p class="text-muted" style="text-align:center;padding:20px">該当する単語がありません</p>';
+  }
+
   return {
     quickStart, startWrongReview, openSubjectSetup, setQuizType, setDifficulty,
     startQuizFromSetup, openQuestionList, selectChoice, selectTF, submitAnswer, nextQuestion, quitQuiz,
     retryQuiz, retryWrong, generateQuestions, saveGeneratedQuestions,
     toggleTheme, toggleSetting, updateQuestionCount,
-    exportData, importData, clearAllData, filterCategory, onNavigate
+    exportData, importData, clearAllData, filterCategory, onNavigate,
+    openVocabList, renderVocabUnit
   };
 })();
