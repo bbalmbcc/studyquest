@@ -20,7 +20,7 @@
   <p>定期試験対策問題アプリ</p>
 </div>
 <div class="stats-row stagger" id="home-stats">
-  <div class="card stat-card"><div class="stat-icon">📝</div><div class="stat-number" id="stat-total">0</div><div class="stat-desc">総回答数</div></div>
+  <div class="card stat-card" onclick="App.openSubjectAnswerBreakdown()" style="cursor:pointer" title="教科別内訳を表示"><div class="stat-icon">📝</div><div class="stat-number" id="stat-total">0</div><div class="stat-desc">総回答数 <span style="font-size:0.65rem;color:var(--accent)">▼詳細</span></div></div>
   <div class="card stat-card"><div class="stat-icon">✅</div><div class="stat-number" id="stat-correct">0</div><div class="stat-desc">正解数</div></div>
   <div class="card stat-card"><div class="stat-icon">📊</div><div class="stat-number" id="stat-rate">0%</div><div class="stat-desc">正答率</div></div>
   <div class="card stat-card"><div class="stat-icon">🔥</div><div class="stat-number" id="stat-streak">0</div><div class="stat-desc">連続正解</div></div>
@@ -29,12 +29,16 @@
   <button class="card btn-block" onclick="App.quickStart()" id="btn-quick-start" style="text-align:center;padding:20px">
     <div style="font-size:1.5rem;margin-bottom:8px">🚀</div><div style="font-weight:600">クイックスタート</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">ランダム出題</div>
   </button>
-  <button class="card btn-block" onclick="App.startWrongReview()" id="btn-wrong-review" style="text-align:center;padding:20px">
+  <button class="card btn-block" onclick="App.openWrongReviewModal()" id="btn-wrong-review" style="text-align:center;padding:20px">
     <div style="font-size:1.5rem;margin-bottom:8px">🔄</div><div style="font-weight:600">間違い復習</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px" id="wrong-count-label">0問</div>
   </button>
   <button class="card btn-block" onclick="UI.openModal('modal-generate')" id="btn-generate" style="text-align:center;padding:20px">
     <div style="font-size:1.5rem;margin-bottom:8px">✨</div><div style="font-weight:600">問題生成</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">テキストから作成</div>
   </button>
+</div>
+<div class="subject-accuracy mt-24">
+  <h2>📊 教科別正答率</h2>
+  <div id="subject-accuracy-list" class="mt-8"><p class="text-muted" style="padding:20px;text-align:center">まだ学習記録がありません</p></div>
 </div>
 <div class="recent-activity mt-24">
   <h2>最近の学習</h2>
@@ -101,12 +105,22 @@
 </div>
 <div class="settings-section card">
   <h2>出題設定</h2>
-  <div class="setting-row">
-    <div class="setting-info"><div class="setting-name">出題数</div><div class="setting-desc">1回のクイズで出題される問題数</div></div>
-    <select class="select" style="width:80px" id="setting-count" onchange="App.updateQuestionCount(this.value)">
-      <option value="5">5</option><option value="10" selected>10</option><option value="15">15</option><option value="20">20</option><option value="30">30</option>
-    </select>
+  <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div class="setting-info"><div class="setting-name">出題数</div><div class="setting-desc">1回のクイズで出題される問題数</div></div>
+      <input type="number" class="input" style="width:80px;text-align:center;padding:10px" id="setting-count-num" min="1" max="500" value="10" onchange="App.updateQuestionCount(this.value);document.getElementById('setting-count-range').value=this.value">
+    </div>
+    <input type="range" id="setting-count-range" min="1" max="200" value="10" style="width:100%;accent-color:var(--accent)" oninput="App.updateQuestionCount(this.value);document.getElementById('setting-count-num').value=this.value">
+    <div style="display:flex;justify-content:space-between;font-size:0.75rem;color:var(--text-muted)"><span>1</span><span>50</span><span>100</span><span>200</span></div>
   </div>
+</div>
+<div class="settings-section card">
+  <h2>🔄 デバイス間同期</h2>
+  <div class="setting-row">
+    <div class="setting-info"><div class="setting-name">問題データを再読込</div><div class="setting-desc">他デバイスから追加された問題を反映します</div></div>
+    <button class="btn btn-sm btn-primary" onclick="App.syncQuestions()" id="btn-sync">🔄 同期</button>
+  </div>
+  <div id="sync-status" class="text-muted" style="font-size:.8rem;margin-top:8px"></div>
 </div>
 <div class="settings-section card">
   <h2>データ管理</h2>
@@ -154,7 +168,13 @@
 
 <div class="modal" id="modal-question-list">
 <div class="modal-content" style="max-width:800px">
-  <div class="modal-header"><h2 id="qlist-title">問題一覧</h2><button class="modal-close" onclick="UI.closeModal('modal-question-list')">✕</button></div>
+  <div class="modal-header">
+    <h2 id="qlist-title">問題一覧</h2>
+    <div style="display:flex;align-items:center;gap:8px">
+      <button class="btn btn-sm btn-secondary" id="btn-qlist-edit" onclick="App.toggleQuestionEditMode()" title="編集モード">🗑️ 編集</button>
+      <button class="modal-close" onclick="UI.closeModal('modal-question-list')">✕</button>
+    </div>
+  </div>
   <div class="qlist-stats text-muted mb-16" id="qlist-stats"></div>
   <div id="qlist-container" style="max-height:60vh;overflow-y:auto;padding-right:8px"></div>
 </div>
@@ -175,6 +195,7 @@
   <div class="gen-mode-tabs">
     <button class="gen-mode-tab active" onclick="App.switchGenMode('text')">📝 テキスト入力</button>
     <button class="gen-mode-tab" onclick="App.switchGenMode('file')">📎 ファイルから生成</button>
+    <button class="gen-mode-tab" onclick="App.switchGenMode('web')">🤖 AI検索</button>
   </div>
   <div class="form-group"><label class="form-label">教科</label><select class="select" id="gen-subject"></select></div>
   <div class="form-group"><label class="form-label">単元</label><select class="select" id="gen-unit"><option value="">指定なし</option></select></div>
@@ -207,6 +228,22 @@
       <div class="attached-files" id="attached-files"></div>
     </div>
   </div>
+  <!-- ネット検索モード (Gemini AI + Search Grounding) -->
+  <div id="gen-mode-web" class="gen-mode-content">
+    <div class="form-group">
+      <label class="form-label">🤖 AI検索 (Gemini + Search Grounding)</label>
+      <div class="web-search-input-row">
+        <input type="text" class="input" id="web-search-query" placeholder="例: 光合成 仕組み, 関ヶ原の戦い, 二次方程式" onkeydown="if(event.key==='Enter')App.searchWeb()">
+        <button class="btn btn-primary" onclick="App.searchWeb()" id="btn-web-search">🔍 AI検索</button>
+      </div>
+      <div class="web-search-hint text-muted" style="font-size:0.75rem;margin-top:6px">
+        💡 Gemini AIがGoogle検索を自動実行し、最新情報から学習資料を生成します<br>
+        ⚠️ 無料枠制限: 1日<span id="web-search-remaining">--</span>件 / 1分間<span id="web-search-rpm">--</span>回
+      </div>
+    </div>
+    <div id="web-search-status" class="hidden"></div>
+    <div id="web-search-results" class="hidden"></div>
+  </div>
   <div class="form-group"><label class="form-label">生成する問題タイプ</label>
     <div class="btn-group"><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked value="選択">選択式</label><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked value="記述">記述式</label><label style="display:flex;align-items:center;gap:6px"><input type="checkbox" checked value="○×">○×</label></div>
   </div>
@@ -219,6 +256,35 @@
 <div class="modal-content" style="max-width:400px;text-align:center">
   <p class="confirm-message" style="font-size:1.1rem;margin:24px 0"></p>
   <div class="btn-group" style="justify-content:center"><button class="btn btn-danger btn-confirm-ok">実行</button><button class="btn btn-secondary btn-confirm-cancel">キャンセル</button></div>
+</div>
+</div>
+
+<div class="modal" id="modal-wrong-review">
+<div class="modal-content" style="max-width:500px">
+  <div class="modal-header"><h2>🔄 間違い復習 - 教科を選択</h2><button class="modal-close" onclick="UI.closeModal('modal-wrong-review')">✕</button></div>
+  <div id="wrong-review-list" style="max-height:60vh;overflow-y:auto;padding-right:8px"></div>
+</div>
+</div>
+
+<div class="modal" id="modal-edit-question">
+<div class="modal-content" style="max-width:600px">
+  <div class="modal-header"><h2>✏️ 問題を編集</h2><button class="modal-close" onclick="UI.closeModal('modal-edit-question')">✕</button></div>
+  <div class="form-group"><label class="form-label">問題文</label><textarea class="textarea" id="edit-q-text" rows="3"></textarea></div>
+  <div class="form-group"><label class="form-label">正解</label><input type="text" class="input" id="edit-q-answer"></div>
+  <div class="form-group" id="edit-q-choices-group" style="display:none"><label class="form-label">選択肢（カンマ区切り）</label><input type="text" class="input" id="edit-q-choices" placeholder="選択肢A, 選択肢B, 選択肢C, 選択肢D"></div>
+  <div class="form-group"><label class="form-label">解説（任意）</label><textarea class="textarea" id="edit-q-explanation" rows="2"></textarea></div>
+  <div style="display:flex;gap:12px">
+    <div class="form-group" style="flex:1"><label class="form-label">タイプ</label><select class="select" id="edit-q-type" onchange="document.getElementById('edit-q-choices-group').style.display=this.value==='選択'?'block':'none'"><option value="選択">選択</option><option value="記述">記述</option><option value="○×">○×</option></select></div>
+    <div class="form-group" style="flex:1"><label class="form-label">難易度</label><select class="select" id="edit-q-diff"><option value="1">1 基礎</option><option value="2">2 標準</option><option value="3">3 応用</option></select></div>
+  </div>
+  <button class="btn btn-primary btn-block mt-8" onclick="App.saveEditedQuestion()">💾 保存</button>
+</div>
+</div>
+
+<div class="modal" id="modal-answer-breakdown">
+<div class="modal-content" style="max-width:550px">
+  <div class="modal-header"><h2>📝 教科別回答数</h2><button class="modal-close" onclick="UI.closeModal('modal-answer-breakdown')">✕</button></div>
+  <div id="answer-breakdown-list" style="max-height:60vh;overflow-y:auto"></div>
 </div>
 </div>
 

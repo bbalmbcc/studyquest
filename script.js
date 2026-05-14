@@ -8,6 +8,7 @@ window.App = (function () {
   let quizTypeFilter = 'all';
   let difficultyFilter = 'all';
   let selectedSubjectId = '';
+  let questionEditMode = false;
 
   // === 初期化 ===
   async function init() {
@@ -17,6 +18,8 @@ window.App = (function () {
     renderSubjects();
     initSettings();
     populateGenerateModal();
+    // 起動時にバックグラウンドでサーバー同期
+    silentSync();
   }
 
   async function loadData() {
@@ -27,13 +30,55 @@ window.App = (function () {
       ]);
       subjects = subRes.subjects || [];
       allQuestions = qRes.questions || [];
-      // カスタム問題を追加
+      // カスタム問題を追加（サーバーにまだ反映されていないもの）
       const custom = Storage.getCustomQuestions();
-      allQuestions = allQuestions.concat(custom);
+      const serverIds = new Set(allQuestions.map(q => q.id));
+      for (const cq of custom) {
+        if (!serverIds.has(cq.id)) allQuestions.push(cq);
+      }
     } catch (e) {
       console.error('データ読み込みエラー:', e);
       UI.showToast('データの読み込みに失敗しました', 'error');
     }
+  }
+
+  // バックグラウンド同期（起動時・保存時に自動実行）
+  async function silentSync() {
+    try {
+      const customQs = Storage.getCustomQuestions();
+      const res = await fetch('/api/questions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: customQs })
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const serverQuestions = data.questions || [];
+      const serverIds = new Set(serverQuestions.map(q => q.id));
+      allQuestions = serverQuestions.slice();
+      // ローカルにしかない問題も保持
+      for (const cq of customQs) {
+        if (!serverIds.has(cq.id)) allQuestions.push(cq);
+      }
+      if (data.added > 0) {
+        console.log(`[Sync] サーバーに${data.added}問追加, 合計${data.total}問`);
+      }
+      renderSubjects();
+    } catch (e) {
+      // サーバー未接続時は無視
+      console.log('[Sync] サーバーに接続できません（オフラインモード）');
+    }
+  }
+
+  // カスタム問題をサーバーにプッシュ
+  async function pushToServer(questions) {
+    try {
+      await fetch('/api/questions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions })
+      });
+    } catch (e) { console.warn('[Sync] プッシュ失敗:', e); }
   }
 
   function getCategoryColor(cat) {
@@ -62,6 +107,9 @@ window.App = (function () {
     // 間違い数
     const wrongIds = Storage.getWrongQuestionIds();
     document.getElementById('wrong-count-label').textContent = wrongIds.length + '問';
+
+    // 教科別正答率
+    renderSubjectAccuracy();
 
     // 最近の学習
     renderRecentActivity(history.slice(0, 10));
@@ -183,7 +231,24 @@ window.App = (function () {
     
     document.getElementById('qlist-title').textContent = (subj ? subj.name : '') + (unit ? ' / ' + unit.name : '') + ' の問題一覧';
     document.getElementById('qlist-stats').textContent = `全 ${pool.length} 問`;
+    questionEditMode = false;
+    const editBtn = document.getElementById('btn-qlist-edit');
+    if (editBtn) { editBtn.textContent = '🗑️ 編集'; editBtn.classList.remove('active'); }
     
+    renderQuestionList(pool);
+    UI.openModal('modal-question-list');
+  }
+
+  function renderQuestionList(pool) {
+    if (!pool) {
+      // 現在のフィルター条件で再取得
+      const unitId = document.getElementById('setup-unit') ? document.getElementById('setup-unit').value : 'all';
+      pool = allQuestions.filter(q => q.subjectId === selectedSubjectId);
+      if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
+      if (quizTypeFilter && quizTypeFilter !== 'all') pool = pool.filter(q => q.type === quizTypeFilter);
+      if (difficultyFilter && difficultyFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(difficultyFilter));
+    }
+    document.getElementById('qlist-stats').textContent = `全 ${pool.length} 問`;
     const container = document.getElementById('qlist-container');
     if (pool.length === 0) {
       container.innerHTML = '<p class="text-muted" style="text-align:center;padding:20px">該当する問題がありません</p>';
@@ -193,17 +258,61 @@ window.App = (function () {
         if (q.type === '選択' && q.choices) {
             ansText = escapeHtml(q.answer) + ' <span style="font-size:0.8rem;color:var(--text-muted)">（他: ' + escapeHtml(q.choices.filter(c => c !== q.answer).join(', ')) + '）</span>';
         }
-        return `<div class="qlist-item">
+        const deleteBtn = questionEditMode ? `<button class="btn-delete-question" onclick="event.stopPropagation();App.deleteQuestion('${escapeAttr(q.id)}')" title="この問題を削除">✕</button>` : '';
+        const editBtn2 = questionEditMode ? `<button class="btn-edit-question" onclick="event.stopPropagation();App.openEditQuestion('${escapeAttr(q.id)}')" title="この問題を編集">✏️</button>` : '';
+        return `<div class="qlist-item ${questionEditMode ? 'edit-mode' : ''}" data-qid="${escapeAttr(q.id)}">
             <div class="qlist-item-header">
-              <span class="qlist-type-badge">${q.type}</span>
-              <span style="font-size:0.8rem;color:var(--text-muted)">難易度: ${q.difficulty}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <span class="qlist-type-badge">${q.type}</span>
+                <span style="font-size:0.8rem;color:var(--text-muted)">難易度: ${q.difficulty}</span>
+              </div>
+              <div style="display:flex;gap:6px">${editBtn2}${deleteBtn}</div>
             </div>
             <div class="qlist-question">${escapeHtml(q.question)}</div>
             <div class="qlist-answer"><span style="font-weight:bold;color:var(--correct)">正解:</span> ${ansText}</div>
           </div>`;
       }).join('');
     }
-    UI.openModal('modal-question-list');
+  }
+
+  function toggleQuestionEditMode() {
+    questionEditMode = !questionEditMode;
+    const editBtn = document.getElementById('btn-qlist-edit');
+    if (editBtn) {
+      editBtn.textContent = questionEditMode ? '✓ 完了' : '🗑️ 編集';
+      if (questionEditMode) editBtn.classList.add('active');
+      else editBtn.classList.remove('active');
+    }
+    renderQuestionList(null);
+  }
+
+  async function deleteQuestion(questionId) {
+    if (!questionId) return;
+    const q = allQuestions.find(qItem => qItem.id === questionId);
+    const qText = q ? q.question.substring(0, 40) + (q.question.length > 40 ? '...' : '') : questionId;
+    UI.confirm('「' + qText + '」を削除しますか？', async () => {
+      // カスタム問題の場合はlocalStorageから削除
+      const customQs = Storage.getCustomQuestions();
+      const isCustom = customQs.some(cq => cq.id === questionId);
+      if (isCustom) {
+        Storage.deleteCustomQuestion(questionId);
+      }
+      // サーバーAPIで削除を試みる
+      try {
+        const res = await fetch('/api/questions/' + encodeURIComponent(questionId), { method: 'DELETE' });
+        if (res.ok) {
+          // サーバー側も削除成功
+        }
+      } catch (e) {
+        // サーバーに接続できない場合は無視（ローカルのみ削除）
+        console.warn('サーバー削除失敗（オフライン）:', e);
+      }
+      // メモリ上の問題リストから削除
+      allQuestions = allQuestions.filter(qItem => qItem.id !== questionId);
+      UI.showToast('問題を削除しました', 'success');
+      renderQuestionList(null);
+      updateFilterSummary();
+    });
   }
 
   function startQuiz(subjectId, unitId, typeFilter, diffFilter) {
@@ -239,14 +348,50 @@ window.App = (function () {
     UI.navigateTo('quiz', { onEnter: () => renderQuestion() });
   }
 
-  function startWrongReview() {
+  // === 間違い復習（教科別） ===
+  function openWrongReviewModal() {
     const wrongIds = Storage.getWrongQuestionIds();
+    if (wrongIds.length === 0) { UI.showToast('間違えた問題はありません', 'info'); return; }
+    const list = document.getElementById('wrong-review-list');
+    // 教科ごとに間違い数を集計
+    const wrongAnswers = Storage.getWrongAnswers();
+    const subjectCounts = {};
+    Object.values(wrongAnswers).forEach(w => {
+      const sid = w.subjectId || 'unknown';
+      subjectCounts[sid] = (subjectCounts[sid] || 0) + 1;
+    });
+    const subjectMap = {};
+    subjects.forEach(s => subjectMap[s.id] = s);
+
+    let html = '<button class="wrong-review-item" onclick="App.startWrongReview(null)">' +
+      '<div class="wrong-review-icon" style="background:var(--accent)">\u2728</div>' +
+      '<div class="wrong-review-info"><div class="wrong-review-name">すべての教科</div><div class="wrong-review-count">' + wrongIds.length + '問</div></div>' +
+      '<div class="wrong-review-arrow">\u2192</div></button>';
+
+    Object.keys(subjectCounts).sort((a, b) => subjectCounts[b] - subjectCounts[a]).forEach(sid => {
+      const subj = subjectMap[sid];
+      if (!subj) return;
+      const color = getCategoryColor(subj.category);
+      const emoji = getCategoryEmoji(subj.category);
+      html += '<button class="wrong-review-item" onclick="App.startWrongReview(\'' + sid + '\')">' +
+        '<div class="wrong-review-icon" style="background:' + color + '">' + emoji + '</div>' +
+        '<div class="wrong-review-info"><div class="wrong-review-name">' + subj.name + '</div><div class="wrong-review-count">' + subjectCounts[sid] + '問</div></div>' +
+        '<div class="wrong-review-arrow">\u2192</div></button>';
+    });
+    list.innerHTML = html;
+    UI.openModal('modal-wrong-review');
+  }
+
+  function startWrongReview(subjectId) {
+    UI.closeModal('modal-wrong-review');
+    const wrongIds = subjectId ? Storage.getWrongQuestionIds(subjectId) : Storage.getWrongQuestionIds();
     if (wrongIds.length === 0) { UI.showToast('間違えた問題はありません', 'info'); return; }
     const pool = allQuestions.filter(q => wrongIds.includes(q.id));
     if (pool.length === 0) { UI.showToast('該当する問題が見つかりません', 'warning'); return; }
     const shuffled = shuffleArray(pool);
-    currentQuiz = { questions: shuffled, currentIndex: 0, answers: [], subjectId: 'review', config: {} };
-    document.getElementById('quiz-subject-name').textContent = '間違い復習';
+    currentQuiz = { questions: shuffled, currentIndex: 0, answers: [], subjectId: subjectId || 'review', config: {} };
+    const subj = subjectId ? subjects.find(s => s.id === subjectId) : null;
+    document.getElementById('quiz-subject-name').textContent = '間違い復習' + (subj ? ' - ' + subj.name : '');
     document.getElementById('quiz-unit-name').textContent = shuffled.length + '問';
     UI.navigateTo('quiz', { onEnter: () => renderQuestion() });
   }
@@ -426,8 +571,8 @@ window.App = (function () {
     currentGenMode = mode;
     document.querySelectorAll('.gen-mode-tab').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.gen-mode-content').forEach(c => c.classList.remove('active'));
-    const tab = mode === 'text' ? 0 : 1;
-    document.querySelectorAll('.gen-mode-tab')[tab].classList.add('active');
+    const tabIndex = mode === 'text' ? 0 : mode === 'file' ? 1 : 2;
+    document.querySelectorAll('.gen-mode-tab')[tabIndex].classList.add('active');
     document.getElementById('gen-mode-' + mode).classList.add('active');
   }
 
@@ -615,7 +760,10 @@ window.App = (function () {
 
   function generateQuestions() {
     let text = '';
-    if (currentGenMode === 'text') {
+    if (currentGenMode === 'web') {
+      text = window._webSearchText || '';
+      if (!text) { UI.showToast('まず検索を実行してください', 'warning'); return; }
+    } else if (currentGenMode === 'text') {
       text = document.getElementById('gen-text').value.trim();
       if (!text) { UI.showToast('テキストを入力してください', 'warning'); return; }
     } else {
@@ -659,6 +807,8 @@ window.App = (function () {
     document.getElementById('gen-preview').classList.add('hidden');
     uploadedFiles = [];
     renderAttachedFiles();
+    // サーバーに自動プッシュ（他デバイスでも使えるように）
+    pushToServer(window._pendingGenerated);
     window._pendingGenerated = null;
     renderSubjects();
   }
@@ -668,7 +818,11 @@ window.App = (function () {
     const s = Storage.getSettings();
     document.getElementById('toggle-theme').classList.toggle('active', s.theme === 'dark');
     document.getElementById('toggle-explanation').classList.toggle('active', s.showExplanation !== false);
-    document.getElementById('setting-count').value = s.questionCount || 10;
+    const count = s.questionCount || 10;
+    const numEl = document.getElementById('setting-count-num');
+    const rangeEl = document.getElementById('setting-count-range');
+    if (numEl) numEl.value = count;
+    if (rangeEl) rangeEl.value = Math.min(count, 200);
     document.getElementById('storage-usage').textContent = Storage.getStorageUsage().formatted;
   }
 
@@ -736,6 +890,64 @@ window.App = (function () {
     if (screen === 'settings') { initSettings(); document.getElementById('storage-usage').textContent = Storage.getStorageUsage().formatted; }
   }
 
+  // === デバイス間同期 ===
+  async function syncQuestions() {
+    const statusEl = document.getElementById('sync-status');
+    const syncBtn = document.getElementById('btn-sync');
+    if (syncBtn) syncBtn.disabled = true;
+    if (statusEl) statusEl.textContent = '🔄 同期中...';
+    try {
+      // 1. ローカルのカスタム問題をサーバーに送信
+      const customQs = Storage.getCustomQuestions();
+      const res = await fetch('/api/questions/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ questions: customQs })
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'HTTP ' + res.status);
+      }
+      const data = await res.json();
+      // 2. サーバーから最新の問題リストを取得して反映
+      const serverQuestions = data.questions || [];
+      allQuestions = serverQuestions.slice();
+      // カスタム問題もマージ（サーバーにない場合の保険）
+      const serverIds = new Set(serverQuestions.map(q => q.id));
+      for (const cq of customQs) {
+        if (!serverIds.has(cq.id)) {
+          allQuestions.push(cq);
+        }
+      }
+      if (statusEl) statusEl.textContent = `✅ 同期完了！ サーバーから${data.added || 0}問追加 / 合計${data.total}問`;
+      UI.showToast(`同期完了: ${data.total}問`, 'success');
+      renderSubjects();
+    } catch (e) {
+      console.error('同期エラー:', e);
+      if (statusEl) statusEl.textContent = '❌ 同期失敗: ' + (e.message || String(e));
+      // フォールバック: サーバーに接続できない場合、直接JSONを再読込
+      try {
+        const [qRes] = await Promise.all([
+          fetch('data/questions.json?t=' + Date.now()).then(r => r.json())
+        ]);
+        const serverQs = qRes.questions || [];
+        const custom = Storage.getCustomQuestions();
+        const serverIds = new Set(serverQs.map(q => q.id));
+        allQuestions = serverQs.slice();
+        for (const cq of custom) {
+          if (!serverIds.has(cq.id)) allQuestions.push(cq);
+        }
+        if (statusEl) statusEl.textContent = '⚠️ API未接続。ファイルから再読込しました（' + allQuestions.length + '問）';
+        UI.showToast('ファイルから再読込しました', 'info');
+        renderSubjects();
+      } catch (e2) {
+        UI.showToast('同期に失敗しました', 'error');
+      }
+    } finally {
+      if (syncBtn) syncBtn.disabled = false;
+    }
+  }
+
   // === ユーティリティ ===
   function shuffleArray(arr) {
     const a = arr.slice();
@@ -798,13 +1010,382 @@ window.App = (function () {
     container.innerHTML = html || '<p class="text-muted" style="text-align:center;padding:20px">該当する単語がありません</p>';
   }
 
+  // === 教科別正答率 ===
+  function renderSubjectAccuracy() {
+    const subjectStats = Storage.getSubjectStats();
+    const el = document.getElementById('subject-accuracy-list');
+    const statsEntries = subjects.map(s => {
+      const st = subjectStats[s.id];
+      if (!st || st.total === 0) return null;
+      return { subject: s, stats: st };
+    }).filter(Boolean);
+
+    if (statsEntries.length === 0) {
+      el.innerHTML = '<p class="text-muted" style="padding:20px;text-align:center">まだ学習記録がありません</p>';
+      return;
+    }
+
+    el.innerHTML = statsEntries.map(e => {
+      const color = getCategoryColor(e.subject.category);
+      return '<div class="accuracy-item">' +
+        '<div class="accuracy-header">' +
+        '<span class="accuracy-name" style="color:' + color + '">' + e.subject.name + '</span>' +
+        '<span class="accuracy-rate">' + e.stats.rate + '%</span>' +
+        '</div>' +
+        '<div class="accuracy-bar"><div class="accuracy-bar-fill" style="width:' + e.stats.rate + '%;background:' + color + '"></div></div>' +
+        '<div class="accuracy-detail text-muted">' + e.stats.correct + ' / ' + e.stats.total + ' 正解</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  // === Gemini API + Search Grounding 問題生成 ===
+  const GEMINI_API_KEY = 'AIzaSyAAvT_rBkQaEYgBsiJ_kOM1-QM8N4A-jHs';
+  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+  const SEARCH_COUNT_KEY = 'studyquest_geminiSearchCount';
+  const SEARCH_RPM_KEY = 'studyquest_geminiRPM';
+  const DAILY_LIMIT = 1500;  // 無料枠: 1日1500リクエスト
+  const RPM_LIMIT = 15;      // 無料枠: 1分間15リクエスト
+
+  function getSearchCount() {
+    const data = JSON.parse(localStorage.getItem(SEARCH_COUNT_KEY) || '{}');
+    const today = new Date().toISOString().slice(0, 10);
+    if (data.date !== today) return { date: today, count: 0 };
+    return data;
+  }
+
+  function incrementSearchCount() {
+    const data = getSearchCount();
+    data.count++;
+    localStorage.setItem(SEARCH_COUNT_KEY, JSON.stringify(data));
+    // RPM追跡
+    const now = Date.now();
+    const rpmData = JSON.parse(localStorage.getItem(SEARCH_RPM_KEY) || '[]');
+    rpmData.push(now);
+    // 1分以上前のものを除去
+    const filtered = rpmData.filter(t => now - t < 60000);
+    localStorage.setItem(SEARCH_RPM_KEY, JSON.stringify(filtered));
+    updateSearchRemaining();
+  }
+
+  function checkRPMLimit() {
+    const now = Date.now();
+    const rpmData = JSON.parse(localStorage.getItem(SEARCH_RPM_KEY) || '[]');
+    const recent = rpmData.filter(t => now - t < 60000);
+    return recent.length < RPM_LIMIT;
+  }
+
+  function getRPMWaitTime() {
+    const now = Date.now();
+    const rpmData = JSON.parse(localStorage.getItem(SEARCH_RPM_KEY) || '[]');
+    const recent = rpmData.filter(t => now - t < 60000);
+    if (recent.length < RPM_LIMIT) return 0;
+    const oldest = Math.min(...recent);
+    return Math.ceil((oldest + 60000 - now) / 1000);
+  }
+
+  function updateSearchRemaining() {
+    const data = getSearchCount();
+    const remaining = Math.max(0, DAILY_LIMIT - data.count);
+    const el = document.getElementById('web-search-remaining');
+    if (el) el.textContent = remaining;
+    const rpmEl = document.getElementById('web-search-rpm');
+    if (rpmEl) {
+      const now = Date.now();
+      const rpmData = JSON.parse(localStorage.getItem(SEARCH_RPM_KEY) || '[]');
+      const recentCount = rpmData.filter(t => now - t < 60000).length;
+      rpmEl.textContent = Math.max(0, RPM_LIMIT - recentCount);
+    }
+  }
+
+  async function callGeminiAPI(prompt, useGrounding, statusEl) {
+    const requestBody = {
+      contents: [{
+        role: 'user',
+        parts: [{ text: prompt }]
+      }],
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 4096
+      }
+    };
+    if (useGrounding) {
+      requestBody.tools = [{ google_search: {} }];
+    }
+
+    const maxRetries = 3;
+    const baseDelay = 5000; // 5秒
+
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      if (attempt > 0) {
+        const delay = baseDelay * Math.pow(2, attempt - 1); // 5s, 10s, 20s
+        const delaySec = Math.round(delay / 1000);
+        if (statusEl) {
+          statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> レート制限中... ' + delaySec + '秒後にリトライします (試行 ' + (attempt + 1) + '/' + (maxRetries + 1) + ')</div>';
+        }
+        await new Promise(r => setTimeout(r, delay));
+        if (statusEl) {
+          statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> リトライ中... (試行 ' + (attempt + 1) + '/' + (maxRetries + 1) + ')</div>';
+        }
+      }
+
+      const res = await fetch(GEMINI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      if (res.ok) {
+        return await res.json();
+      }
+
+      if (res.status === 429) {
+        const errData = await res.json().catch(() => ({}));
+        const detail = errData.error?.message || '';
+        console.warn('Gemini 429 (attempt ' + (attempt + 1) + '):', detail);
+        if (attempt === maxRetries) {
+          throw { status: 429, message: detail || 'レート制限', retried: true };
+        }
+        continue;
+      }
+
+      // 429以外のエラー
+      const errData = await res.json().catch(() => ({}));
+      throw { status: res.status, message: errData.error?.message || 'HTTP ' + res.status };
+    }
+  }
+
+  async function searchWeb() {
+    const query = document.getElementById('web-search-query').value.trim();
+    if (!query) { UI.showToast('検索キーワードを入力してください', 'warning'); return; }
+
+    const searchData = getSearchCount();
+    if (searchData.count >= DAILY_LIMIT) {
+      UI.showToast('本日のAPI制限（' + DAILY_LIMIT + '件）に達しました。明日までお待ちください', 'error');
+      return;
+    }
+
+    const statusEl = document.getElementById('web-search-status');
+    const resultsEl = document.getElementById('web-search-results');
+    const searchBtn = document.getElementById('btn-web-search');
+
+    statusEl.classList.remove('hidden');
+    statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> Gemini AI が Google 検索中...</div>';
+    resultsEl.classList.add('hidden');
+    searchBtn.disabled = true;
+
+    const prompt = `あなたは学習教材の専門家です。以下のトピックについて、最新かつ正確な情報を収集してください。
+
+【検索トピック】
+${query}
+
+【指示】
+1. 上記トピックについて詳しく調べてください
+2. 試験対策に役立つ詳細な学習資料を作成してください
+3. 以下の形式で回答してください：
+
+【トピック概要】
+（トピックの概要を2-3文で説明）
+
+【重要ポイント】
+- ポイント1: 詳細な説明
+- ポイント2: 詳細な説明
+- ポイント3: 詳細な説明
+（できるだけ多くのポイントを列挙）
+
+【重要用語】
+- 用語1: 定義・説明
+- 用語2: 定義・説明
+（できるだけ多くの用語を列挙）
+
+【よく出る問題パターン】
+- パターン1: 具体的な問題例と答え
+- パターン2: 具体的な問題例と答え
+
+日本語で回答してください。高校生の定期試験対策として使える内容にしてください。`;
+
+    try {
+      let data = null;
+      let usedGrounding = false;
+
+      // まずSearch Grounding付きで試行
+      try {
+        statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> Gemini AI が Google 検索中 (Search Grounding)...</div>';
+        data = await callGeminiAPI(prompt, true, statusEl);
+        usedGrounding = true;
+      } catch (groundingErr) {
+        if (groundingErr.status === 429 && groundingErr.retried) {
+          // Search Groundingのレート制限 → Groundingなしで再試行
+          console.warn('Search Grounding 429, falling back to non-grounding mode');
+          statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> Search Grounding制限中... AIの知識のみで回答を生成中...</div>';
+          try {
+            data = await callGeminiAPI(prompt, false, statusEl);
+            usedGrounding = false;
+          } catch (fallbackErr) {
+            throw new Error('Gemini API エラー: ' + (fallbackErr.message || '不明なエラー'));
+          }
+        } else {
+          throw new Error('Gemini API エラー: ' + (groundingErr.message || '不明なエラー'));
+        }
+      }
+
+      incrementSearchCount();
+
+      // レスポンスからテキストを抽出
+      let responseText = '';
+      if (data.candidates && data.candidates[0]) {
+        const parts = data.candidates[0].content?.parts || [];
+        responseText = parts.map(p => p.text || '').join('\n');
+      }
+
+      if (!responseText) {
+        statusEl.innerHTML = '<div class="web-search-empty">⚠️ 検索結果を取得できませんでした。キーワードを変えてお試しください。</div>';
+        searchBtn.disabled = false;
+        return;
+      }
+
+      // Search Groundingのメタデータを取得
+      const groundingMeta = data.candidates[0]?.groundingMetadata;
+      const searchQueries = groundingMeta?.webSearchQueries || [];
+      const searchResults = groundingMeta?.groundingChunks || [];
+
+      window._webSearchText = responseText;
+
+      // 結果表示
+      let resultHtml = '<div class="web-result-item" style="white-space:pre-wrap;line-height:1.7">' + escapeHtml(responseText) + '</div>';
+
+      // 検索クエリ情報を表示
+      if (searchQueries.length > 0) {
+        resultHtml = '<div style="margin-bottom:12px;padding:10px;background:rgba(108,99,255,0.1);border-radius:8px;font-size:0.8rem">' +
+          '<strong>🔍 実行された検索:</strong> ' + searchQueries.map(q => escapeHtml(q)).join(', ') + '</div>' + resultHtml;
+      }
+
+      // 参照ソース情報を表示
+      if (searchResults.length > 0) {
+        resultHtml += '<div style="margin-top:12px;padding:10px;background:rgba(0,212,170,0.1);border-radius:8px;font-size:0.75rem">' +
+          '<strong>📚 情報ソース:</strong><br>' +
+          searchResults.slice(0, 5).map(chunk => {
+            const web = chunk.web;
+            if (web) return '<a href="' + escapeAttr(web.uri || '') + '" target="_blank" style="color:var(--accent);text-decoration:underline">' + escapeHtml(web.title || web.uri || '') + '</a>';
+            return '';
+          }).filter(Boolean).join('<br>') +
+          '</div>';
+      }
+
+      const modeLabel = usedGrounding ? '✅ Gemini AI が Search Grounding で情報を取得しました' : '✅ Gemini AI の知識から情報を生成しました（Search Grounding 制限のためフォールバック）';
+      statusEl.innerHTML = '<div class="web-search-success">' + modeLabel + '</div>';
+      resultsEl.classList.remove('hidden');
+      resultsEl.innerHTML = '<div class="web-results-header">🤖 AI検索結果プレビュー</div>' + resultHtml +
+        '<div class="text-muted" style="font-size:0.8rem;margin-top:8px;text-align:center">↑ 上記のテキストから問題を生成します。下の「問題を生成」ボタンを押してください。</div>';
+    } catch (err) {
+      console.error('Gemini API Error:', err);
+      statusEl.innerHTML = '<div class="web-search-error">❌ AI検索エラー: ' + escapeHtml(err.message || String(err)) + '</div>';
+    } finally {
+      searchBtn.disabled = false;
+      updateSearchRemaining();
+    }
+  }
+
+  // === 問題編集 ===
+  let editingQuestionId = null;
+
+  function openEditQuestion(questionId) {
+    const q = allQuestions.find(item => item.id === questionId);
+    if (!q) { UI.showToast('問題が見つかりません', 'error'); return; }
+    editingQuestionId = questionId;
+    document.getElementById('edit-q-text').value = q.question;
+    document.getElementById('edit-q-answer').value = q.answer;
+    document.getElementById('edit-q-explanation').value = q.explanation || '';
+    document.getElementById('edit-q-type').value = q.type;
+    document.getElementById('edit-q-diff').value = q.difficulty;
+    const choicesGroup = document.getElementById('edit-q-choices-group');
+    if (q.type === '選択' && q.choices) {
+      choicesGroup.style.display = 'block';
+      document.getElementById('edit-q-choices').value = q.choices.join(', ');
+    } else {
+      choicesGroup.style.display = q.type === '選択' ? 'block' : 'none';
+      document.getElementById('edit-q-choices').value = '';
+    }
+    UI.openModal('modal-edit-question');
+  }
+
+  async function saveEditedQuestion() {
+    if (!editingQuestionId) return;
+    const q = allQuestions.find(item => item.id === editingQuestionId);
+    if (!q) { UI.showToast('問題が見つかりません', 'error'); return; }
+    const newText = document.getElementById('edit-q-text').value.trim();
+    const newAnswer = document.getElementById('edit-q-answer').value.trim();
+    if (!newText || !newAnswer) { UI.showToast('問題文と正解は必須です', 'warning'); return; }
+    q.question = newText;
+    q.answer = newAnswer;
+    q.explanation = document.getElementById('edit-q-explanation').value.trim();
+    q.type = document.getElementById('edit-q-type').value;
+    q.difficulty = parseInt(document.getElementById('edit-q-diff').value);
+    if (q.type === '選択') {
+      const choicesText = document.getElementById('edit-q-choices').value;
+      q.choices = choicesText.split(',').map(c => c.trim()).filter(c => c.length > 0);
+      if (!q.choices.includes(q.answer)) q.choices.push(q.answer);
+    } else {
+      delete q.choices;
+    }
+    // カスタム問題の場合はlocalStorageも更新
+    const customQs = Storage.getCustomQuestions();
+    const customIdx = customQs.findIndex(cq => cq.id === editingQuestionId);
+    if (customIdx >= 0) {
+      customQs[customIdx] = { ...customQs[customIdx], ...q };
+      Storage.addCustomQuestions([]); // 内部でconcatされるので代わりに直接書き換え
+      localStorage.setItem('quizApp_customQuestions', JSON.stringify(customQs));
+    }
+    // サーバーAPIで更新を試みる
+    try {
+      await fetch('/api/questions/' + encodeURIComponent(editingQuestionId), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(q)
+      });
+    } catch (e) { console.warn('サーバー更新失敗:', e); }
+    UI.closeModal('modal-edit-question');
+    UI.showToast('問題を更新しました', 'success');
+    renderQuestionList(null);
+    editingQuestionId = null;
+  }
+
+  // === 教科別回答数 ===
+  function openSubjectAnswerBreakdown() {
+    const subjectStats = Storage.getSubjectStats();
+    const subjectMap = {};
+    subjects.forEach(s => subjectMap[s.id] = s);
+    const entries = Object.keys(subjectStats)
+      .map(sid => ({ subject: subjectMap[sid], stats: subjectStats[sid] }))
+      .filter(e => e.subject && e.stats.total > 0)
+      .sort((a, b) => b.stats.total - a.stats.total);
+    const totalAll = entries.reduce((s, e) => s + e.stats.total, 0);
+    const list = document.getElementById('answer-breakdown-list');
+    if (entries.length === 0) {
+      list.innerHTML = '<p class="text-muted" style="text-align:center;padding:20px">まだ回答記録がありません</p>';
+    } else {
+      list.innerHTML = '<div style="padding:12px 16px;margin-bottom:12px;background:rgba(139,92,246,0.1);border-radius:12px;display:flex;justify-content:space-between;font-weight:700"><span>合計</span><span>' + totalAll + ' 回答</span></div>' +
+        entries.map(e => {
+          const color = getCategoryColor(e.subject.category);
+          const emoji = getCategoryEmoji(e.subject.category);
+          const pct = Math.round(e.stats.total / totalAll * 100);
+          return '<div class="accuracy-item"><div class="accuracy-header"><span class="accuracy-name" style="color:' + color + '">' + emoji + ' ' + e.subject.name + '</span><span style="font-weight:700">' + e.stats.total + '回答</span></div>' +
+            '<div class="accuracy-bar"><div class="accuracy-bar-fill" style="width:' + pct + '%;background:' + color + '"></div></div>' +
+            '<div class="accuracy-detail text-muted">正解 ' + e.stats.correct + ' / 不正解 ' + (e.stats.total - e.stats.correct) + ' (正答率 ' + e.stats.rate + '%)</div></div>';
+        }).join('');
+    }
+    UI.openModal('modal-answer-breakdown');
+  }
+
   return {
-    quickStart, startWrongReview, openSubjectSetup, setQuizType, setDifficulty,
+    quickStart, openWrongReviewModal, startWrongReview, openSubjectSetup, setQuizType, setDifficulty,
     startQuizFromSetup, openQuestionList, selectChoice, selectTF, submitAnswer, nextQuestion, quitQuiz,
     retryQuiz, retryWrong, generateQuestions, saveGeneratedQuestions,
     toggleTheme, toggleSetting, updateQuestionCount,
     exportData, importData, clearAllData, filterCategory, onNavigate,
     openVocabList, renderVocabUnit,
-    switchGenMode, handleFileUpload, removeFile
+    switchGenMode, handleFileUpload, removeFile, searchWeb,
+    toggleQuestionEditMode, deleteQuestion, syncQuestions,
+    openEditQuestion, saveEditedQuestion, openSubjectAnswerBreakdown
   };
 })();

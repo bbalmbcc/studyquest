@@ -598,3 +598,116 @@ body.modal-open { overflow: hidden; }
 
 /* SVG definition for active nav gradient */
 svg { display: block; }
+
+/* === 教科別正答率 === */
+.subject-accuracy h2 { font-size: 1.1rem; font-weight: 700; }
+.accuracy-item {
+  background: var(--card-bg); border-radius: 12px; padding: 14px 16px;
+  margin-bottom: 10px; border: 1px solid var(--border);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.accuracy-item:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+.accuracy-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.accuracy-name { font-size: 0.9rem; font-weight: 600; }
+.accuracy-rate { font-size: 1.1rem; font-weight: 700; }
+.accuracy-bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 6px; }
+.accuracy-bar-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; min-width: 2px; }
+.accuracy-detail { font-size: 0.75rem; }
+
+/* === 間違い復習教科選択モーダル === */
+.wrong-review-item {
+  display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px;
+  background: var(--card-bg); border: 1px solid var(--border); border-radius: 12px;
+  margin-bottom: 8px; cursor: pointer; text-align: left; color: var(--text-primary);
+  font-family: inherit; font-size: 1rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.wrong-review-item:hover {
+  transform: translateX(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-color: var(--accent);
+}
+.wrong-review-icon {
+  width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
+  justify-content: center; font-size: 1.3rem; color: #fff; flex-shrink: 0;
+}
+.wrong-review-info { flex: 1; }
+.wrong-review-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 2px; }
+.wrong-review-count { font-size: 0.8rem; color: var(--text-muted); }
+.wrong-review-arrow { font-size: 1.2rem; color: var(--text-muted); transition: transform 0.15s ease; }
+.wrong-review-item:hover .wrong-review-arrow { transform: translateX(4px); color: var(--accent); }
+
+/* === Google検索モード === */
+.web-search-input-row { display: flex; gap: 8px; }
+.web-search-input-row .input { flex: 1; }
+.web-search-input-row .btn { flex-shrink: 0; white-space: nowrap; }
+.web-search-loading {
+  display: flex; align-items: center; gap: 10px; justify-content: center;
+  padding: 16px; color: var(--accent); font-weight: 500;
+}
+.web-search-loading .spinner {
+  width: 20px; height: 20px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%;
+  animation: rotate 0.8s linear infinite;
+}
+.web-search-success { padding: 12px; color: var(--correct); font-weight: 500; text-align: center; }
+.web-search-error { padding: 12px; color: var(--incorrect); font-weight: 500; text-align: center; }
+.web-search-empty { padding: 12px; color: var(--warning); font-weight: 500; text-align: center; }
+.web-results-header {
+  font-size: 0.85rem; font-weight: 600; color: var(--text-secondary);
+  margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+.web-result-item {
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 8px; background: var(--card-bg);
+  transition: border-color 0.15s ease;
+}
+.web-result-item:hover { border-color: var(--accent); }
+.web-result-title { font-weight: 600; font-size: 0.9rem; color: var(--accent); margin-bottom: 4px; }
+.web-result-snippet { font-size: 0.82rem; color: var(--text-secondary); line-height: 1.5; margin-bottom: 4px; }
+.web-result-url { font-size: 0.72rem; }
+#web-search-results { max-height: 250px; overflow-y: auto; padding-right: 6px; }
+
+/* === 問題削除・編集モード === */
+.btn-delete-question {
+  width: 32px; height: 32px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  color: var(--text-muted); font-size: 1rem; font-weight: 700;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer; flex-shrink: 0;
+  background: rgba(255, 8, 68, 0.08);
+  border: 1px solid rgba(255, 8, 68, 0.2);
+}
+.btn-delete-question:hover {
+  background: rgba(255, 8, 68, 0.25); color: #ff5252;
+  transform: scale(1.15); border-color: rgba(255, 8, 68, 0.5);
+  box-shadow: 0 4px 12px rgba(255, 8, 68, 0.3);
+}
+.qlist-item.edit-mode {
+  border-left-color: var(--incorrect);
+  animation: editPulse 0.3s ease;
+}
+@keyframes editPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+#btn-qlist-edit.active {
+  background: linear-gradient(135deg, var(--correct), #0ba360) !important;
+  color: #fff !important;
+  border-color: transparent !important;
+  box-shadow: 0 4px 12px rgba(0, 242, 96, 0.3);
+}
+.btn-edit-question {
+  width: 32px; height: 32px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 0.85rem;
+  transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: pointer; flex-shrink: 0;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.btn-edit-question:hover {
+  background: rgba(139, 92, 246, 0.25);
+  transform: scale(1.15); border-color: rgba(139, 92, 246, 0.5);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}

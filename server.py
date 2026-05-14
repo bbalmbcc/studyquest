@@ -203,17 +203,50 @@ class StudyQuestHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=STATIC_DIR, **kwargs)
 
+    def do_GET(self):
+        parsed = urlparse(self.path)
+        if parsed.path == '/api/questions':
+            self.handle_get_questions()
+        elif parsed.path == '/api/questions/count':
+            self.handle_get_question_counts()
+        else:
+            super().do_GET()
+
     def do_POST(self):
         parsed = urlparse(self.path)
         if parsed.path == '/api/ocr':
             self.handle_ocr()
+        elif parsed.path == '/api/questions/sync':
+            self.handle_sync_questions()
+        else:
+            self.send_error(404, 'Not Found')
+
+    def do_DELETE(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/questions/'):
+            question_id = parsed.path[len('/api/questions/'):]
+            if question_id:
+                self.handle_delete_question(question_id)
+            else:
+                self.send_error(400, 'Question ID required')
+        else:
+            self.send_error(404, 'Not Found')
+
+    def do_PUT(self):
+        parsed = urlparse(self.path)
+        if parsed.path.startswith('/api/questions/'):
+            question_id = parsed.path[len('/api/questions/'):]
+            if question_id:
+                self.handle_update_question(question_id)
+            else:
+                self.send_error(400, 'Question ID required')
         else:
             self.send_error(404, 'Not Found')
 
     def do_OPTIONS(self):
         self.send_response(200)
         self.send_header('Access-Control-Allow-Origin', '*')
-        self.send_header('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type')
         self.end_headers()
 
@@ -302,10 +335,133 @@ class StudyQuestHandler(http.server.SimpleHTTPRequestHandler):
 
     def log_message(self, format, *args):
         # 静的ファイルアクセスログを簡略化
-        if '/api/' in (args[0] if args else ''):
+        arg_str = str(args[0]) if args else ''
+        if '/api/' in arg_str:
             super().log_message(format, *args)
-        elif '.map' not in (args[0] if args else ''):
+        elif '.map' not in arg_str:
             super().log_message(format, *args)
+
+    def handle_get_questions(self):
+        """questions.json の全問題を返す"""
+        try:
+            qpath = os.path.join(STATIC_DIR, 'data', 'questions.json')
+            with open(qpath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            self.send_json_response(data)
+        except Exception as e:
+            self.send_json_error(500, f'読み込みエラー: {str(e)}')
+
+    def handle_get_question_counts(self):
+        """教科ごとの問題数を返す"""
+        try:
+            qpath = os.path.join(STATIC_DIR, 'data', 'questions.json')
+            with open(qpath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            counts = {}
+            for q in data.get('questions', []):
+                sid = q.get('subjectId', 'unknown')
+                counts[sid] = counts.get(sid, 0) + 1
+            self.send_json_response({'counts': counts, 'total': len(data.get('questions', []))})
+        except Exception as e:
+            self.send_json_error(500, f'読み込みエラー: {str(e)}')
+
+    def handle_delete_question(self, question_id):
+        """指定IDの問題を questions.json から削除"""
+        try:
+            from urllib.parse import unquote
+            question_id = unquote(question_id)
+            qpath = os.path.join(STATIC_DIR, 'data', 'questions.json')
+            with open(qpath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            original_count = len(data.get('questions', []))
+            data['questions'] = [q for q in data.get('questions', []) if q.get('id') != question_id]
+            new_count = len(data['questions'])
+            if new_count == original_count:
+                self.send_json_error(404, f'問題ID "{question_id}" が見つかりません')
+                return
+            with open(qpath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print(f'[API] 問題を削除: {question_id}')
+            self.send_json_response({'success': True, 'deleted': question_id, 'remaining': new_count})
+        except Exception as e:
+            traceback.print_exc()
+            self.send_json_error(500, f'削除エラー: {str(e)}')
+
+    def handle_update_question(self, question_id):
+        """指定IDの問題を questions.json で更新"""
+        try:
+            from urllib.parse import unquote
+            question_id = unquote(question_id)
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_json_error(400, 'リクエストボディが空です')
+                return
+            body = self.rfile.read(content_length)
+            updated_q = json.loads(body.decode('utf-8'))
+
+            qpath = os.path.join(STATIC_DIR, 'data', 'questions.json')
+            with open(qpath, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            found = False
+            for i, q in enumerate(data.get('questions', [])):
+                if q.get('id') == question_id:
+                    # IDとsubjectId/unitIdは維持しつつ内容を更新
+                    for key in ['question', 'answer', 'explanation', 'type', 'difficulty', 'choices']:
+                        if key in updated_q:
+                            data['questions'][i][key] = updated_q[key]
+                        elif key == 'choices' and key in data['questions'][i]:
+                            del data['questions'][i][key]
+                    found = True
+                    break
+            if not found:
+                self.send_json_error(404, f'問題ID "{question_id}" が見つかりません')
+                return
+            with open(qpath, 'w', encoding='utf-8') as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+            print(f'[API] 問題を更新: {question_id}')
+            self.send_json_response({'success': True, 'updated': question_id})
+        except Exception as e:
+            traceback.print_exc()
+            self.send_json_error(500, f'更新エラー: {str(e)}')
+
+    def handle_sync_questions(self):
+        """クライアントのカスタム問題をサーバーの questions.json にマージ"""
+        try:
+            content_length = int(self.headers.get('Content-Length', 0))
+            if content_length == 0:
+                self.send_json_error(400, 'リクエストボディが空です')
+                return
+            body = self.rfile.read(content_length)
+            client_data = json.loads(body.decode('utf-8'))
+            client_questions = client_data.get('questions', [])
+
+            qpath = os.path.join(STATIC_DIR, 'data', 'questions.json')
+            with open(qpath, 'r', encoding='utf-8') as f:
+                server_data = json.load(f)
+
+            existing_ids = {q['id'] for q in server_data.get('questions', [])}
+            added = 0
+            for q in client_questions:
+                if q.get('id') and q['id'] not in existing_ids:
+                    server_data['questions'].append(q)
+                    existing_ids.add(q['id'])
+                    added += 1
+
+            if added > 0:
+                with open(qpath, 'w', encoding='utf-8') as f:
+                    json.dump(server_data, f, ensure_ascii=False, indent=2)
+
+            # サーバー側の全問題数を返す
+            self.send_json_response({
+                'success': True,
+                'added': added,
+                'total': len(server_data['questions']),
+                'questions': server_data['questions']
+            })
+            print(f'[API] 同期完了: {added}問追加, 合計{len(server_data["questions"])}問')
+        except Exception as e:
+            traceback.print_exc()
+            self.send_json_error(500, f'同期エラー: {str(e)}')
 
 
 def main():
