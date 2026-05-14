@@ -273,7 +273,17 @@
         { "id": "bricks1-s6u2", "name": "Stage 6 - Unit 2" },
         { "id": "bricks1-s6u3", "name": "Stage 6 - Unit 3" },
         { "id": "bricks1-s6u4", "name": "Stage 6 - Unit 4" },
-        { "id": "bricks1-s6u5", "name": "Stage 6 - Unit 5" }
+        { "id": "bricks1-s6u5", "name": "Stage 6 - Unit 5" },
+        { "id": "bricks1-s6u6", "name": "Stage 6 - Unit 6" },
+        { "id": "bricks1-s6u7", "name": "Stage 6 - Unit 7" },
+        { "id": "bricks1-s6u8", "name": "Stage 6 - Unit 8" },
+        { "id": "bricks1-s6u9", "name": "Stage 6 - Unit 9" },
+        { "id": "bricks1-s6u10", "name": "Stage 6 - Unit 10" },
+        { "id": "bricks1-s6u11", "name": "Stage 6 - Unit 11" },
+        { "id": "bricks1-s6u12", "name": "Stage 6 - Unit 12" },
+        { "id": "bricks1-s6u13", "name": "Stage 6 - Unit 13" },
+        { "id": "bricks1-s6u14", "name": "Stage 6 - Unit 14" },
+        { "id": "bricks1-s6u15", "name": "Stage 6 - Unit 15" }
       ]
     },
     {
