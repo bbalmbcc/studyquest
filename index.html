@@ -115,6 +115,18 @@
   </div>
 </div>
 <div class="settings-section card">
+  <h2>🔑 Gemini API キー</h2>
+  <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:12px">
+    <div class="setting-info"><div class="setting-name">APIキー設定</div><div class="setting-desc">AI検索機能を使用するためのGoogle Gemini APIキーを管理します</div></div>
+    <div id="api-key-status" style="margin:4px 0"></div>
+    <div style="display:flex;gap:8px">
+      <input type="password" class="input" id="api-key-input" placeholder="AIza... で始まるAPIキーを入力" style="flex:1;font-size:0.9rem">
+      <button class="btn btn-sm btn-primary" onclick="App.saveApiKeyFromInput()" style="white-space:nowrap">💾 保存</button>
+    </div>
+    <div class="text-muted" style="font-size:0.75rem">※ APIキーはこのブラウザのローカルストレージに保存されます。外部に送信されません。</div>
+  </div>
+</div>
+<div class="settings-section card">
   <h2>🔄 デバイス間同期</h2>
   <div class="setting-row">
     <div class="setting-info"><div class="setting-name">問題データを再読込</div><div class="setting-desc">他デバイスから追加された問題を反映します</div></div>

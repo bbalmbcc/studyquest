@@ -824,6 +824,7 @@ window.App = (function () {
     if (numEl) numEl.value = count;
     if (rangeEl) rangeEl.value = Math.min(count, 200);
     document.getElementById('storage-usage').textContent = Storage.getStorageUsage().formatted;
+    renderApiKeyStatus();
   }
 
   function toggleTheme(el) {
@@ -1039,9 +1040,61 @@ window.App = (function () {
   }
 
   // === Gemini API + Search Grounding 問題生成 ===
-  const GEMINI_API_KEY = 'AIzaSyAAvT_rBkQaEYgBsiJ_kOM1-QM8N4A-jHs';
+  const GEMINI_API_KEY_STORAGE = 'studyquest_geminiApiKey';
   const GEMINI_MODEL = 'gemini-2.5-flash';
-  const GEMINI_ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`;
+
+  function getGeminiApiKey() {
+    return localStorage.getItem(GEMINI_API_KEY_STORAGE) || '';
+  }
+
+  function setGeminiApiKey(key) {
+    if (key) {
+      localStorage.setItem(GEMINI_API_KEY_STORAGE, key.trim());
+    } else {
+      localStorage.removeItem(GEMINI_API_KEY_STORAGE);
+    }
+    renderApiKeyStatus();
+  }
+
+  function getGeminiEndpoint() {
+    const key = getGeminiApiKey();
+    if (!key) return null;
+    return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+  }
+
+  function renderApiKeyStatus() {
+    const container = document.getElementById('api-key-status');
+    if (!container) return;
+    const key = getGeminiApiKey();
+    if (key) {
+      const masked = key.slice(0, 8) + '••••••••' + key.slice(-4);
+      container.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        '<span style="color:var(--correct);font-weight:600">✅ 設定済み</span>' +
+        '<code style="font-size:0.8rem;background:rgba(255,255,255,0.05);padding:4px 10px;border-radius:6px;color:var(--text-muted)">' + escapeHtml(masked) + '</code>' +
+        '<button class="btn btn-sm btn-danger" onclick="App.deleteApiKey()" style="padding:6px 14px;font-size:0.8rem">🗑️ 削除</button>' +
+        '</div>';
+    } else {
+      container.innerHTML = '<span style="color:var(--warning);font-weight:600">⚠️ 未設定 — AI検索を使用するにはAPIキーを入力してください</span>';
+    }
+  }
+
+  function saveApiKeyFromInput() {
+    const input = document.getElementById('api-key-input');
+    if (!input) return;
+    const key = input.value.trim();
+    if (!key) { UI.showToast('APIキーを入力してください', 'warning'); return; }
+    if (!key.startsWith('AIza')) { UI.showToast('無効なAPIキー形式です', 'error'); return; }
+    setGeminiApiKey(key);
+    input.value = '';
+    UI.showToast('APIキーを保存しました', 'success');
+  }
+
+  function deleteApiKey() {
+    UI.confirm('Gemini APIキーを削除しますか？AI検索機能が使えなくなります。', () => {
+      setGeminiApiKey(null);
+      UI.showToast('APIキーを削除しました', 'info');
+    });
+  }
   const SEARCH_COUNT_KEY = 'studyquest_geminiSearchCount';
   const SEARCH_RPM_KEY = 'studyquest_geminiRPM';
   const DAILY_LIMIT = 1500;  // 無料枠: 1日1500リクエスト
@@ -1129,7 +1182,9 @@ window.App = (function () {
         }
       }
 
-      const res = await fetch(GEMINI_ENDPOINT, {
+      const endpoint = getGeminiEndpoint();
+      if (!endpoint) throw { status: 0, message: 'APIキーが設定されていません。設定画面でAPIキーを入力してください。' };
+      const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestBody)
@@ -1158,6 +1213,11 @@ window.App = (function () {
   async function searchWeb() {
     const query = document.getElementById('web-search-query').value.trim();
     if (!query) { UI.showToast('検索キーワードを入力してください', 'warning'); return; }
+
+    if (!getGeminiApiKey()) {
+      UI.showToast('APIキーが設定されていません。設定画面で入力してください', 'error');
+      return;
+    }
 
     const searchData = getSearchCount();
     if (searchData.count >= DAILY_LIMIT) {
@@ -1386,6 +1446,7 @@ ${query}
     openVocabList, renderVocabUnit,
     switchGenMode, handleFileUpload, removeFile, searchWeb,
     toggleQuestionEditMode, deleteQuestion, syncQuestions,
-    openEditQuestion, saveEditedQuestion, openSubjectAnswerBreakdown
+    openEditQuestion, saveEditedQuestion, openSubjectAnswerBreakdown,
+    saveApiKeyFromInput, deleteApiKey, renderApiKeyStatus
   };
 })();
