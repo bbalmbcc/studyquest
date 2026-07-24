@@ -1,10 +1,25 @@
 /**
  * Question Generator Module - テキストから問題を自動生成
+ * v3: アスタリスク除去 + 問題文の自己完結化
  */
 window.QuestionGenerator = (function () {
 
   function generateId() {
     return 'gen_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+  }
+
+  /**
+   * テキストからMarkdown記法のアスタリスク等を除去
+   */
+  function sanitizeText(text) {
+    if (!text) return '';
+    return text
+      .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')  // **bold**, *italic*, ***both***
+      .replace(/^\s*[\*\-]\s+/gm, '')             // リスト記号 * - を除去
+      .replace(/#{1,6}\s*/g, '')                   // 見出し # を除去
+      .replace(/`([^`]+)`/g, '$1')                 // `code` を除去
+      .replace(/\*+/g, '')                         // 残りのアスタリスクを除去
+      .trim();
   }
 
   /**
@@ -18,6 +33,8 @@ window.QuestionGenerator = (function () {
     options = options || {};
     const types = options.types || ['選択', '記述', '○×'];
     const maxCount = options.count || 10;
+    // 入力テキストもサニタイズ
+    text = sanitizeText(text);
     const lines = parseText(text);
     if (lines.length === 0) return [];
 
@@ -36,6 +53,15 @@ window.QuestionGenerator = (function () {
     if (types.includes('記述')) {
       questions = questions.concat(generateFillBlank(pairs, subjectId, unitId));
     }
+
+    // 全問題テキストをサニタイズ
+    questions = questions.map(q => {
+      q.question = sanitizeText(q.question);
+      q.answer = sanitizeText(q.answer);
+      if (q.explanation) q.explanation = sanitizeText(q.explanation);
+      if (q.choices) q.choices = q.choices.map(c => sanitizeText(c));
+      return q;
+    });
 
     // シャッフルして制限数に切り詰め
     questions = shuffle(questions).slice(0, maxCount);
@@ -86,16 +112,16 @@ window.QuestionGenerator = (function () {
     const termPairs = pairs.filter(p => p.term);
 
     termPairs.forEach((pair, i) => {
-      // 正しい文（○）
+      // 正しい文（○）— 問題文に判断材料を十分に含める
       questions.push({
         id: generateId(),
         subjectId: subjectId,
         unitId: unitId,
         type: '○×',
         difficulty: 1,
-        question: pair.original,
+        question: '次の文は正しいか。「' + pair.term + '」とは「' + pair.definition + '」のことである。',
         answer: '○',
-        explanation: 'この記述は正しいです。',
+        explanation: 'この記述は正しいです。' + pair.term + 'は' + pair.definition + 'です。',
         generated: true
       });
 
@@ -103,16 +129,15 @@ window.QuestionGenerator = (function () {
       if (termPairs.length > 1) {
         const otherIdx = (i + 1) % termPairs.length;
         const wrongDef = termPairs[otherIdx].definition;
-        const wrongStatement = pair.term + 'は' + wrongDef;
         questions.push({
           id: generateId(),
           subjectId: subjectId,
           unitId: unitId,
           type: '○×',
           difficulty: 2,
-          question: wrongStatement,
+          question: '次の文は正しいか。「' + pair.term + '」とは「' + wrongDef + '」のことである。',
           answer: '×',
-          explanation: '正しくは「' + pair.term + 'は' + pair.definition + '」です。',
+          explanation: '誤りです。「' + pair.term + '」は「' + pair.definition + '」のことです。「' + wrongDef + '」は「' + termPairs[otherIdx].term + '」の説明です。',
           generated: true
         });
       }
@@ -135,18 +160,40 @@ window.QuestionGenerator = (function () {
 
       const allChoices = shuffle([pair.definition, ...shuffledWrong]);
 
+      // 問題文に十分な文脈を含める
       questions.push({
         id: generateId(),
         subjectId: subjectId,
         unitId: unitId,
         type: '選択',
         difficulty: 2,
-        question: '「' + pair.term + '」に当てはまるものはどれか？',
+        question: '「' + pair.term + '」の意味・説明として最も適切なものを選べ。',
         choices: allChoices,
         answer: pair.definition,
-        explanation: pair.term + 'は' + pair.definition + 'です。',
+        explanation: '「' + pair.term + '」は「' + pair.definition + '」です。',
         generated: true
       });
+
+      // 逆引き問題（定義→用語）も生成
+      const wrongTermChoices = termPairs
+        .filter((_, idx) => idx !== i)
+        .map(p => p.term);
+      const shuffledWrongTerms = shuffle(wrongTermChoices).slice(0, 3);
+      if (shuffledWrongTerms.length >= 2) {
+        const allTermChoices = shuffle([pair.term, ...shuffledWrongTerms]);
+        questions.push({
+          id: generateId(),
+          subjectId: subjectId,
+          unitId: unitId,
+          type: '選択',
+          difficulty: 2,
+          question: '次の説明に該当する用語はどれか。「' + pair.definition + '」',
+          choices: allTermChoices,
+          answer: pair.term,
+          explanation: '正解は「' + pair.term + '」です。' + pair.term + 'は' + pair.definition + 'です。',
+          generated: true
+        });
+      }
     });
     return questions;
   }
@@ -156,18 +203,33 @@ window.QuestionGenerator = (function () {
     const termPairs = pairs.filter(p => p.term);
 
     termPairs.forEach(pair => {
-      // 用語を答えさせる
+      // 用語を答えさせる（定義を問題文に含める）
       questions.push({
         id: generateId(),
         subjectId: subjectId,
         unitId: unitId,
         type: '記述',
         difficulty: 2,
-        question: pair.definition + ' — これを何というか？',
+        question: '次の説明に該当する用語を答えよ。「' + pair.definition + '」',
         answer: pair.term,
-        explanation: '答えは「' + pair.term + '」です。',
+        explanation: '答えは「' + pair.term + '」です。' + pair.term + 'は' + pair.definition + 'です。',
         generated: true
       });
+
+      // 定義を答えさせる（用語を問題文に含める）
+      if (pair.definition.length <= 30) {
+        questions.push({
+          id: generateId(),
+          subjectId: subjectId,
+          unitId: unitId,
+          type: '記述',
+          difficulty: 2,
+          question: '「' + pair.term + '」の意味を答えよ。',
+          answer: pair.definition,
+          explanation: '「' + pair.term + '」は「' + pair.definition + '」です。',
+          generated: true
+        });
+      }
     });
     return questions;
   }
@@ -198,14 +260,14 @@ window.QuestionGenerator = (function () {
         unitId: unitId,
         type: cols[2] || '記述',
         difficulty: 1,
-        question: cols[0],
-        answer: cols[1],
-        explanation: cols[3] || '',
+        question: sanitizeText(cols[0]),
+        answer: sanitizeText(cols[1]),
+        explanation: sanitizeText(cols[3] || ''),
         generated: true
       });
     }
     return questions;
   }
 
-  return { generateFromText, importFromCSV, shuffle };
+  return { generateFromText, importFromCSV, shuffle, sanitizeText };
 })();

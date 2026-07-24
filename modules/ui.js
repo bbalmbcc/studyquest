@@ -155,9 +155,19 @@ window.UI = (function () {
     requestAnimationFrame(step);
   }
 
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   return {
     init, navigateTo, applyTheme, toggleTheme, getTheme,
     showToast, openModal, closeModal, closeAllModals, confirm,
-    updateProgress, formatDate, animateCounter, currentScreen: () => currentScreen
+    updateProgress, formatDate, animateCounter, escapeHtml, currentScreen: () => currentScreen
   };
 })();
