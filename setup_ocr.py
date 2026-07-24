@@ -12,14 +12,14 @@ import os
 import shutil
 
 NDLOCR_LITE_REPO = "https://github.com/ndl-lab/ndlocr-lite.git"
-INSTALL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ndlocr-lite")
+ZIP_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ndlocr_lite_v1.2.1_windows.zip")
+INSTALL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ndlocr_lite_v1.2.1_windows")
 
 
 def check_python_version():
     """Python 3.10以上か確認"""
     if sys.version_info < (3, 10):
         print(f"❌ Python 3.10以上が必要です。現在のバージョン: {sys.version}")
-        print("   https://www.python.org/downloads/ から最新版をインストールしてください。")
         return False
     print(f"✅ Python {sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
     return True
@@ -34,13 +34,12 @@ def check_git():
             return True
     except FileNotFoundError:
         pass
-    print("❌ git がインストールされていません。")
-    print("   https://git-scm.com/downloads からインストールしてください。")
+    print("⚠️ git がインストールされていません（ZIPからインストール可能）")
     return False
 
 
-def clone_ndlocr_lite():
-    """ndlocr-lite をクローン"""
+def extract_or_clone():
+    """ZIPから展開、またはGit clone"""
     if os.path.isdir(INSTALL_DIR):
         print(f"📁 ndlocr-lite は既にインストールされています: {INSTALL_DIR}")
         answer = input("   再インストールしますか？ (y/N): ").strip().lower()
@@ -50,18 +49,33 @@ def clone_ndlocr_lite():
         print("   既存のディレクトリを削除中...")
         shutil.rmtree(INSTALL_DIR)
 
-    print(f"\n📥 ndlocr-lite をクローン中...")
-    print(f"   リポジトリ: {NDLOCR_LITE_REPO}")
-    print(f"   インストール先: {INSTALL_DIR}")
-    result = subprocess.run(
-        ['git', 'clone', NDLOCR_LITE_REPO, INSTALL_DIR],
-        capture_output=False
-    )
-    if result.returncode != 0:
-        print("❌ クローンに失敗しました。")
-        return False
-    print("✅ クローン完了")
-    return True
+    # ZIPファイルがあれば展開
+    if os.path.isfile(ZIP_FILE):
+        print(f"\n📦 ZIPファイルから展開中...")
+        print(f"   ソース: {ZIP_FILE}")
+        print(f"   展開先: {INSTALL_DIR}")
+        import zipfile
+        try:
+            with zipfile.ZipFile(ZIP_FILE, 'r') as zf:
+                zf.extractall(INSTALL_DIR)
+            print("✅ ZIP展開完了")
+            return True
+        except Exception as e:
+            print(f"❌ ZIP展開に失敗しました: {e}")
+            return False
+    else:
+        # ZIPがない場合はGit clone
+        if not check_git():
+            print("❌ ZIPファイルもgitも見つかりません。")
+            print(f"   {os.path.basename(ZIP_FILE)} をプロジェクトディレクトリに配置してください。")
+            return False
+        print(f"\n📥 ndlocr-lite をクローン中...")
+        result = subprocess.run(['git', 'clone', NDLOCR_LITE_REPO, INSTALL_DIR], capture_output=False)
+        if result.returncode != 0:
+            print("❌ クローンに失敗しました。")
+            return False
+        print("✅ クローン完了")
+        return True
 
 
 def install_dependencies():
@@ -127,11 +141,9 @@ def main():
     print("📋 前提条件の確認:")
     if not check_python_version():
         sys.exit(1)
-    if not check_git():
-        sys.exit(1)
 
-    # クローン
-    if not clone_ndlocr_lite():
+    # 展開/クローン
+    if not extract_or_clone():
         sys.exit(1)
 
     # 依存関係インストール

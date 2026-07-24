@@ -710,4 +710,173 @@ svg { display: block; }
   background: rgba(139, 92, 246, 0.25);
   transform: scale(1.15); border-color: rgba(139, 92, 246, 0.5);
   box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}/* --- クイックスタート モーダル --- */
+.quick-start-mode:hover {
+  border-color: var(--primary);
+  background: var(--surface);
+  transform: translateY(-2px);
 }
+.quick-start-subject-btn {
+  border: 1px solid var(--border);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  background: var(--surface);
+}
+.quick-start-subject-btn:hover {
+  border-color: var(--subject-color);
+  background: var(--bg);
+  transform: translateY(-3px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+/* --- 問題生成 全問確認モーダル --- */
+.gen-review-stats {
+  padding: 12px;
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 8px;
+  color: var(--correct);
+  text-align: center;
+}
+.btn-delete-question {
+  background: none;
+  border: none;
+  color: var(--danger);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  line-height: 1;
+}
+.btn-delete-question:hover {
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* === BREADCRUMB === */
+.breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-top: 12px;
+  margin-bottom: 24px;
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  list-style: none !important;
+  padding-left: 16px !important;
+  clear: both;
+}
+.breadcrumb li {
+  display: inline-flex;
+  align-items: center;
+  list-style: none !important;
+  margin: 0;
+  padding: 0;
+}
+.breadcrumb a {
+  color: var(--accent);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.breadcrumb a:hover {
+  text-decoration: underline;
+}
+.breadcrumb-separator {
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin: 0 4px;
+}
+
+/* === SITE FOOTER === */
+.site-footer {
+  margin-top: 60px;
+  padding: 40px 20px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+.site-footer-inner {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  text-align: center;
+}
+.site-footer-nav {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px 24px;
+}
+.site-footer-nav a {
+  color: var(--text-secondary);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.site-footer-nav a:hover {
+  color: var(--accent);
+}
+.site-footer-copyright {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.last-updated-badge {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.05);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: inline-block;
+  margin-top: 8px;
+}
+
+/* === STATIC PAGES CONTENT === */
+.static-page-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.static-header {
+  margin-bottom: 32px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid var(--border);
+}
+.static-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+}
+.static-content section {
+  margin-bottom: 32px;
+  background: var(--bg-card);
+  padding: 24px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.static-content h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--accent);
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+}
+.static-content p, .static-content li {
+  line-height: 1.7;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+.static-content ul, .static-content ol {
+  padding-left: 24px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+

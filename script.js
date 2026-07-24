@@ -18,8 +18,8 @@ window.App = (function () {
     renderSubjects();
     initSettings();
     populateGenerateModal();
-    // 起動時にバックグラウンドでサーバー同期
-    silentSync();
+    renderAdminMessage();
+    // Firebase同期はmain.js (ES Module) が担当
   }
 
   async function loadData() {
@@ -42,36 +42,25 @@ window.App = (function () {
     }
   }
 
-  // バックグラウンド同期（起動時・保存時に自動実行）
-  async function silentSync() {
-    try {
-      const customQs = Storage.getCustomQuestions();
-      const res = await fetch('/api/questions/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ questions: customQs })
-      });
-      if (!res.ok) return;
-      const data = await res.json();
-      const serverQuestions = data.questions || [];
-      const serverIds = new Set(serverQuestions.map(q => q.id));
-      allQuestions = serverQuestions.slice();
-      // ローカルにしかない問題も保持
-      for (const cq of customQs) {
-        if (!serverIds.has(cq.id)) allQuestions.push(cq);
-      }
-      if (data.added > 0) {
-        console.log(`[Sync] サーバーに${data.added}問追加, 合計${data.total}問`);
-      }
-      renderSubjects();
-    } catch (e) {
-      // サーバー未接続時は無視
-      console.log('[Sync] サーバーに接続できません（オフラインモード）');
-    }
+  // Firebaseリアルタイム同期から呼ばれるコールバック（main.jsから使用）
+  function updateAppQuizData(questionsFromFirebase) {
+    if (!questionsFromFirebase || questionsFromFirebase.length === 0) return;
+    allQuestions = questionsFromFirebase.slice();
+    console.log('[Firebase] リアルタイム同期: ' + allQuestions.length + '問');
+    renderHome();
+    renderSubjects();
   }
 
-  // カスタム問題をサーバーにプッシュ
+  // 問題をクラウドにプッシュ
   async function pushToServer(questions) {
+    // Firebase (main.js経由)
+    if (window.FirebaseSyncModule) {
+      try {
+        await window.FirebaseSyncModule.pushQuestions(questions);
+        return;
+      } catch (e) { console.warn('[Firebase] プッシュ失敗:', e); }
+    }
+    // フォールバック: ローカルサーバー
     try {
       await fetch('/api/questions/sync', {
         method: 'POST',
@@ -291,23 +280,14 @@ window.App = (function () {
     const q = allQuestions.find(qItem => qItem.id === questionId);
     const qText = q ? q.question.substring(0, 40) + (q.question.length > 40 ? '...' : '') : questionId;
     UI.confirm('「' + qText + '」を削除しますか？', async () => {
-      // カスタム問題の場合はlocalStorageから削除
       const customQs = Storage.getCustomQuestions();
-      const isCustom = customQs.some(cq => cq.id === questionId);
-      if (isCustom) {
-        Storage.deleteCustomQuestion(questionId);
+      if (customQs.some(cq => cq.id === questionId)) Storage.deleteCustomQuestion(questionId);
+      // Firebase削除
+      if (window.FirebaseSyncModule) {
+        try { await window.FirebaseSyncModule.deleteQuestion(questionId); } catch(e) { console.warn('Firebase削除失敗:', e); }
       }
-      // サーバーAPIで削除を試みる
-      try {
-        const res = await fetch('/api/questions/' + encodeURIComponent(questionId), { method: 'DELETE' });
-        if (res.ok) {
-          // サーバー側も削除成功
-        }
-      } catch (e) {
-        // サーバーに接続できない場合は無視（ローカルのみ削除）
-        console.warn('サーバー削除失敗（オフライン）:', e);
-      }
-      // メモリ上の問題リストから削除
+      // ローカルサーバー削除
+      try { await fetch('/api/questions/' + encodeURIComponent(questionId), { method: 'DELETE' }); } catch(e) {}
       allQuestions = allQuestions.filter(qItem => qItem.id !== questionId);
       UI.showToast('問題を削除しました', 'success');
       renderQuestionList(null);
@@ -337,13 +317,45 @@ window.App = (function () {
     UI.navigateTo('quiz', { onEnter: () => renderQuestion() });
   }
 
-  function quickStart() {
+  function openQuickStartModal() {
+    if (allQuestions.length === 0) { UI.showToast('問題がありません', 'warning'); return; }
+    // 教科一覧を生成
+    const grid = document.getElementById('quick-start-subjects');
+    grid.innerHTML = subjects.map(s => {
+      const color = getCategoryColor(s.category);
+      const emoji = getCategoryEmoji(s.category);
+      const qCount = allQuestions.filter(q => q.subjectId === s.id).length;
+      if (qCount === 0) return '';
+      return '<button class="card quick-start-subject-btn" style="padding:12px;text-align:center;cursor:pointer;--subject-color:' + color + '" onclick="App.quickStartSubject(\'' + s.id + '\')">' +
+        '<div style="font-size:1.2rem;margin-bottom:4px">' + emoji + '</div>' +
+        '<div style="font-weight:600;font-size:.85rem">' + s.name + '</div>' +
+        '<div class="text-muted" style="font-size:.7rem">' + qCount + '問</div></button>';
+    }).filter(Boolean).join('');
+    UI.openModal('modal-quick-start');
+  }
+
+  function quickStartMixed() {
+    UI.closeModal('modal-quick-start');
     if (allQuestions.length === 0) { UI.showToast('問題がありません', 'warning'); return; }
     const settings = Storage.getSettings();
     const count = Math.min(allQuestions.length, settings.questionCount);
     const shuffled = shuffleArray(allQuestions).slice(0, count);
     currentQuiz = { questions: shuffled, currentIndex: 0, answers: [], subjectId: 'mixed', config: {} };
-    document.getElementById('quiz-subject-name').textContent = 'ランダム出題';
+    document.getElementById('quiz-subject-name').textContent = '教科混合モード';
+    document.getElementById('quiz-unit-name').textContent = '';
+    UI.navigateTo('quiz', { onEnter: () => renderQuestion() });
+  }
+
+  function quickStartSubject(subjectId) {
+    UI.closeModal('modal-quick-start');
+    const pool = allQuestions.filter(q => q.subjectId === subjectId);
+    if (pool.length === 0) { UI.showToast('この教科の問題がありません', 'warning'); return; }
+    const settings = Storage.getSettings();
+    const count = Math.min(pool.length, settings.questionCount);
+    const shuffled = shuffleArray(pool).slice(0, count);
+    currentQuiz = { questions: shuffled, currentIndex: 0, answers: [], subjectId: subjectId, config: {} };
+    const subj = subjects.find(s => s.id === subjectId);
+    document.getElementById('quiz-subject-name').textContent = '教科統一: ' + (subj ? subj.name : '');
     document.getElementById('quiz-unit-name').textContent = '';
     UI.navigateTo('quiz', { onEnter: () => renderQuestion() });
   }
@@ -784,30 +796,51 @@ window.App = (function () {
     const generated = QuestionGenerator.generateFromText(text, subjectId, unitId, { types, count: 30 });
     if (generated.length === 0) { UI.showToast('問題を生成できませんでした。テキスト形式を確認してください', 'error'); return; }
 
-    // プレビュー表示
-    const preview = document.getElementById('gen-preview');
-    preview.classList.remove('hidden');
-    preview.innerHTML = '<h3 style="margin-bottom:12px">🎉 ' + generated.length + '問 生成されました</h3>' +
-      '<div style="max-height:300px;overflow-y:auto;padding-right:8px">' +
-      generated.slice(0, 8).map(q => '<div style="padding:10px;border-bottom:1px solid var(--border);font-size:.85rem"><span class="qlist-type-badge" style="font-size:.7rem;padding:3px 10px;margin-right:8px">' + q.type + '</span>' + escapeHtml(q.question) + '</div>').join('') +
-      (generated.length > 8 ? '<div class="text-muted" style="padding:10px;font-size:.85rem">他 ' + (generated.length - 8) + '問...</div>' : '') +
-      '</div>' +
-      '<button class="btn btn-success btn-block mt-8" onclick="App.saveGeneratedQuestions()">💾 保存して追加</button>';
-
+    // 全問確認モーダルを表示
     window._pendingGenerated = generated;
+    showGenReviewModal(generated);
+  }
+
+  function showGenReviewModal(generated) {
+    document.getElementById('gen-review-stats').innerHTML = '🎉 <strong>' + generated.length + '問</strong> 生成されました';
+    const list = document.getElementById('gen-review-list');
+    list.innerHTML = generated.map((q, i) => {
+      const ansText = escapeHtml(q.answer);
+      return '<div class="qlist-item" data-gen-idx="' + i + '" style="margin-bottom:8px">' +
+        '<div class="qlist-item-header"><div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="qlist-type-badge">' + q.type + '</span>' +
+        '<span style="font-size:0.8rem;color:var(--text-muted)">難易度: ' + q.difficulty + '</span></div>' +
+        '<button class="btn-delete-question" onclick="App.removeGenQuestion(' + i + ')" title="この問題を除外">✕</button></div>' +
+        '<div class="qlist-question">' + escapeHtml(q.question) + '</div>' +
+        '<div class="qlist-answer"><span style="font-weight:bold;color:var(--correct)">正解:</span> ' + ansText + '</div>' +
+        (q.explanation ? '<div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">' + escapeHtml(q.explanation) + '</div>' : '') +
+        '</div>';
+    }).join('');
+    UI.openModal('modal-gen-review');
+  }
+
+  function removeGenQuestion(index) {
+    if (!window._pendingGenerated) return;
+    window._pendingGenerated.splice(index, 1);
+    if (window._pendingGenerated.length === 0) {
+      UI.closeModal('modal-gen-review');
+      UI.showToast('すべての問題を除外しました', 'info');
+      return;
+    }
+    showGenReviewModal(window._pendingGenerated);
   }
 
   function saveGeneratedQuestions() {
-    if (!window._pendingGenerated) return;
+    if (!window._pendingGenerated || window._pendingGenerated.length === 0) return;
     Storage.addCustomQuestions(window._pendingGenerated);
     allQuestions = allQuestions.concat(window._pendingGenerated);
     UI.showToast(window._pendingGenerated.length + '問を追加しました！', 'success');
+    UI.closeModal('modal-gen-review');
     UI.closeModal('modal-generate');
     document.getElementById('gen-text').value = '';
     document.getElementById('gen-preview').classList.add('hidden');
     uploadedFiles = [];
     renderAttachedFiles();
-    // サーバーに自動プッシュ（他デバイスでも使えるように）
     pushToServer(window._pendingGenerated);
     window._pendingGenerated = null;
     renderSubjects();
@@ -818,6 +851,7 @@ window.App = (function () {
     const s = Storage.getSettings();
     document.getElementById('toggle-theme').classList.toggle('active', s.theme === 'dark');
     document.getElementById('toggle-explanation').classList.toggle('active', s.showExplanation !== false);
+    renderFirebaseStatus();
     const count = s.questionCount || 10;
     const numEl = document.getElementById('setting-count-num');
     const rangeEl = document.getElementById('setting-count-range');
@@ -891,59 +925,39 @@ window.App = (function () {
     if (screen === 'settings') { initSettings(); document.getElementById('storage-usage').textContent = Storage.getStorageUsage().formatted; }
   }
 
-  // === デバイス間同期 ===
+  // === クラウド同期 ===
   async function syncQuestions() {
     const statusEl = document.getElementById('sync-status');
     const syncBtn = document.getElementById('btn-sync');
     if (syncBtn) syncBtn.disabled = true;
     if (statusEl) statusEl.textContent = '🔄 同期中...';
     try {
-      // 1. ローカルのカスタム問題をサーバーに送信
       const customQs = Storage.getCustomQuestions();
+      // Firebase (main.js経由)
+      if (window.FirebaseSyncModule) {
+        if (customQs.length > 0) await window.FirebaseSyncModule.pushQuestions(customQs);
+        if (statusEl) statusEl.textContent = '✅ Firebase同期完了！ 合計' + allQuestions.length + '問';
+        UI.showToast('Firebase同期完了: ' + allQuestions.length + '問', 'success');
+        renderSubjects();
+        return;
+      }
+      // フォールバック: ローカルサーバー
       const res = await fetch('/api/questions/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ questions: customQs })
       });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || 'HTTP ' + res.status);
-      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-      // 2. サーバーから最新の問題リストを取得して反映
-      const serverQuestions = data.questions || [];
-      allQuestions = serverQuestions.slice();
-      // カスタム問題もマージ（サーバーにない場合の保険）
-      const serverIds = new Set(serverQuestions.map(q => q.id));
-      for (const cq of customQs) {
-        if (!serverIds.has(cq.id)) {
-          allQuestions.push(cq);
-        }
-      }
-      if (statusEl) statusEl.textContent = `✅ 同期完了！ サーバーから${data.added || 0}問追加 / 合計${data.total}問`;
-      UI.showToast(`同期完了: ${data.total}問`, 'success');
+      allQuestions = (data.questions || []).slice();
+      const serverIds = new Set(allQuestions.map(q => q.id));
+      for (const cq of customQs) { if (!serverIds.has(cq.id)) allQuestions.push(cq); }
+      if (statusEl) statusEl.textContent = '✅ 同期完了！ 合計' + allQuestions.length + '問';
+      UI.showToast('同期完了: ' + allQuestions.length + '問', 'success');
       renderSubjects();
     } catch (e) {
       console.error('同期エラー:', e);
       if (statusEl) statusEl.textContent = '❌ 同期失敗: ' + (e.message || String(e));
-      // フォールバック: サーバーに接続できない場合、直接JSONを再読込
-      try {
-        const [qRes] = await Promise.all([
-          fetch('data/questions.json?t=' + Date.now()).then(r => r.json())
-        ]);
-        const serverQs = qRes.questions || [];
-        const custom = Storage.getCustomQuestions();
-        const serverIds = new Set(serverQs.map(q => q.id));
-        allQuestions = serverQs.slice();
-        for (const cq of custom) {
-          if (!serverIds.has(cq.id)) allQuestions.push(cq);
-        }
-        if (statusEl) statusEl.textContent = '⚠️ API未接続。ファイルから再読込しました（' + allQuestions.length + '問）';
-        UI.showToast('ファイルから再読込しました', 'info');
-        renderSubjects();
-      } catch (e2) {
-        UI.showToast('同期に失敗しました', 'error');
-      }
+      UI.showToast('同期に失敗しました', 'error');
     } finally {
       if (syncBtn) syncBtn.disabled = false;
     }
@@ -1039,9 +1053,9 @@ window.App = (function () {
     }).join('');
   }
 
-  // === Gemini API + Search Grounding 問題生成 ===
+  // === Gemini API + Search Grounding 設定 ===
   const GEMINI_API_KEY_STORAGE = 'studyquest_geminiApiKey';
-  const GEMINI_MODEL = 'gemini-2.5-flash';
+  const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 
   function getGeminiApiKey() {
     return localStorage.getItem(GEMINI_API_KEY_STORAGE) || '';
@@ -1056,10 +1070,10 @@ window.App = (function () {
     renderApiKeyStatus();
   }
 
-  function getGeminiEndpoint() {
+  function getGeminiEndpoint(modelOverride) {
     const key = getGeminiApiKey();
-    if (!key) return null;
-    return `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${key}`;
+    const model = modelOverride || DEFAULT_GEMINI_MODEL;
+    return `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
   }
 
   function renderApiKeyStatus() {
@@ -1151,7 +1165,7 @@ window.App = (function () {
     }
   }
 
-  async function callGeminiAPI(prompt, useGrounding, statusEl) {
+  async function callGeminiAPI(prompt, useGrounding, statusEl, modelOverride) {
     const requestBody = {
       contents: [{
         role: 'user',
@@ -1182,8 +1196,8 @@ window.App = (function () {
         }
       }
 
-      const endpoint = getGeminiEndpoint();
-      if (!endpoint) throw { status: 0, message: 'APIキーが設定されていません。設定画面でAPIキーを入力してください。' };
+      const endpoint = getGeminiEndpoint(modelOverride);
+      if (!endpoint || !getGeminiApiKey()) throw { status: 0, message: 'APIキーが設定されていません。設定画面でAPIキーを入力してください。' };
       const res = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1225,6 +1239,9 @@ window.App = (function () {
       return;
     }
 
+    const modelSelect = document.getElementById('web-search-model');
+    const selectedModel = modelSelect ? modelSelect.value : undefined;
+
     const statusEl = document.getElementById('web-search-status');
     const resultsEl = document.getElementById('web-search-results');
     const searchBtn = document.getElementById('btn-web-search');
@@ -1248,19 +1265,22 @@ ${query}
 （トピックの概要を2-3文で説明）
 
 【重要ポイント】
-- ポイント1: 詳細な説明
-- ポイント2: 詳細な説明
-- ポイント3: 詳細な説明
+ポイント1: 詳細な説明
+ポイント2: 詳細な説明
 （できるだけ多くのポイントを列挙）
 
 【重要用語】
-- 用語1: 定義・説明
-- 用語2: 定義・説明
+用語1: 定義・説明
+用語2: 定義・説明
 （できるだけ多くの用語を列挙）
 
 【よく出る問題パターン】
-- パターン1: 具体的な問題例と答え
-- パターン2: 具体的な問題例と答え
+パターン1: 具体的な問題例と答え
+パターン2: 具体的な問題例と答え
+
+【重要な注意事項】
+- 回答に*（アスタリスク）や**などのMarkdown記法を一切使用しないでください。プレーンテキストで回答してください。
+- 問題文だけを読んで回答がわかるように、問題文に十分な情報を含めてください。
 
 日本語で回答してください。高校生の定期試験対策として使える内容にしてください。`;
 
@@ -1271,7 +1291,7 @@ ${query}
       // まずSearch Grounding付きで試行
       try {
         statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> Gemini AI が Google 検索中 (Search Grounding)...</div>';
-        data = await callGeminiAPI(prompt, true, statusEl);
+        data = await callGeminiAPI(prompt, true, statusEl, selectedModel);
         usedGrounding = true;
       } catch (groundingErr) {
         if (groundingErr.status === 429 && groundingErr.retried) {
@@ -1279,7 +1299,7 @@ ${query}
           console.warn('Search Grounding 429, falling back to non-grounding mode');
           statusEl.innerHTML = '<div class="web-search-loading"><div class="spinner"></div> Search Grounding制限中... AIの知識のみで回答を生成中...</div>';
           try {
-            data = await callGeminiAPI(prompt, false, statusEl);
+            data = await callGeminiAPI(prompt, false, statusEl, selectedModel);
             usedGrounding = false;
           } catch (fallbackErr) {
             throw new Error('Gemini API エラー: ' + (fallbackErr.message || '不明なエラー'));
@@ -1396,14 +1416,15 @@ ${query}
       Storage.addCustomQuestions([]); // 内部でconcatされるので代わりに直接書き換え
       localStorage.setItem('quizApp_customQuestions', JSON.stringify(customQs));
     }
-    // サーバーAPIで更新を試みる
+    // サーバー/Firebase更新
+    if (window.FirebaseSyncModule) {
+      try { await window.FirebaseSyncModule.pushQuestions([q]); } catch(e) { console.warn('Firebase更新失敗:', e); }
+    }
     try {
       await fetch('/api/questions/' + encodeURIComponent(editingQuestionId), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(q)
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(q)
       });
-    } catch (e) { console.warn('サーバー更新失敗:', e); }
+    } catch (e) {}
     UI.closeModal('modal-edit-question');
     UI.showToast('問題を更新しました', 'success');
     renderQuestionList(null);
@@ -1437,8 +1458,141 @@ ${query}
     UI.openModal('modal-answer-breakdown');
   }
 
+  // === Firebase設定管理 ===
+  // 新アーキテクチャではfirebase/firebase-config.jsに設定を直接記述します。
+  // 以下の関数群は既存UIとの互換性のために残しています。
+  function renderFirebaseStatus() {
+    const el = document.getElementById('firebase-status');
+    if (!el) return;
+    const syncBadge = document.getElementById('syncStatus');
+    if (syncBadge && syncBadge.textContent.includes('同期済み')) {
+      el.innerHTML = '<span style="color:var(--correct);font-weight:600">✅ Firebase接続済み</span>';
+    } else {
+      const saved = localStorage.getItem('studyquest_firebaseConfig');
+      if (saved) {
+        el.innerHTML = '<span style="color:var(--success);font-weight:600">✅ カスタム設定済み（サイトから入力済）</span>';
+      } else {
+        el.innerHTML = '<span style="color:var(--warning);font-weight:600">⚠️ デフォルト設定使用中（独自のFirebaseを使用する場合は「⚙️ Firebase設定」ボタンから入力してください）</span>';
+      }
+    }
+  }
+
+  function openFirebaseConfigModal() {
+    const saved = localStorage.getItem('studyquest_firebaseConfig');
+    const input = document.getElementById('firebase-config-input');
+    if (saved && input) input.value = saved;
+    UI.openModal('modal-firebase-config');
+  }
+
+  function saveFirebaseConfig() {
+    const input = document.getElementById('firebase-config-input');
+    if (!input) return;
+    try {
+      let val = input.value.trim();
+      // const firebaseConfig = { ... }; の形式に対応
+      val = val.replace(/^(const|let|var)\s+firebaseConfig\s*=\s*/, '');
+      val = val.replace(/;$/, '');
+      const config = new Function("return " + val)();
+      if (!config) { UI.showToast('無効な設定です', 'error'); return; }
+      // databaseURL自動補完
+      if (!config.databaseURL && config.projectId) {
+        config.databaseURL = "https://" + config.projectId + "-default-rtdb.firebaseio.com";
+      }
+      if (!config.databaseURL) { UI.showToast('databaseURLを自動推測できませんでした', 'error'); return; }
+      // LocalStorageに保存 → ページリロードでfirebase-config.jsが読み込む
+      localStorage.setItem('studyquest_firebaseConfig', JSON.stringify(config));
+      UI.showToast('Firebase設定を保存しました。ページをリロードして接続します。', 'success');
+      UI.closeModal('modal-firebase-config');
+      renderFirebaseStatus();
+      // 自動リロードで接続
+      setTimeout(() => location.reload(), 1500);
+    } catch (e) {
+      UI.showToast('無効な形式です。Firebaseのconst firebaseConfig = {...};をそのまま貼り付けてください', 'error');
+    }
+  }
+
+  function deleteFirebaseConfig() {
+    UI.confirm('Firebase設定を削除しますか？', () => {
+      localStorage.removeItem('studyquest_firebaseConfig');
+      UI.showToast('Firebase設定を削除しました。ページをリロードします。', 'info');
+      renderFirebaseStatus();
+      UI.closeModal('modal-firebase-config');
+      setTimeout(() => location.reload(), 1500);
+    });
+  }
+
+  async function uploadToFirebase() {
+    if (!window.FirebaseSyncModule) {
+      UI.showToast('Firebase未接続です', 'warning');
+      return;
+    }
+    UI.confirm('現在の全問題(' + allQuestions.length + '問)をFirebaseにアップロードしますか？', async () => {
+      const statusEl = document.getElementById('sync-status');
+      if (statusEl) statusEl.textContent = '📤 アップロード中...';
+      try {
+        await window.FirebaseSyncModule.pushQuestions(allQuestions);
+        if (statusEl) statusEl.textContent = '✅ ' + allQuestions.length + '問をFirebaseにアップロードしました';
+        UI.showToast('アップロード完了！', 'success');
+      } catch (e) {
+        if (statusEl) statusEl.textContent = '❌ アップロード失敗: ' + e.message;
+        UI.showToast('アップロードに失敗しました', 'error');
+      }
+    });
+  }
+
+  // === 管理者メッセージ機能 ===
+  const ADMIN_PASS_KEY = 'studyquest_admin_pass';
+  const ADMIN_MSG_KEY = 'studyquest_admin_msg';
+  const DEFAULT_ADMIN_PASS = 'bbalmbcc123';
+  const DEFAULT_ADMIN_MSG = '「みなさんこんにちは！管理者 <strong>bbalmbcc</strong> です。日々新しい知識とスキルを身につけることで、皆さんの試験対策や学習習慣形成を強力にサポートします。自学自習や試験前の総復習にぜひご活用ください！」';
+
+  function renderAdminMessage() {
+    const displayEl = document.getElementById('admin-message-display-text');
+    if (!displayEl) return;
+    const savedMsg = localStorage.getItem(ADMIN_MSG_KEY);
+    if (savedMsg) {
+      displayEl.innerHTML = savedMsg;
+    } else {
+      displayEl.innerHTML = DEFAULT_ADMIN_MSG;
+    }
+  }
+
+  function openAdminMsgModal() {
+    const savedMsg = localStorage.getItem(ADMIN_MSG_KEY);
+    const rawText = savedMsg ? savedMsg.replace(/^「|」$/g, '').replace(/<[^>]*>/g, '') : 'みなさんこんにちは！管理者 bbalmbcc です。日々新しい知識とスキルを身につけることで、皆さんの試験対策や学習習慣形成を強力にサポートします。自学自習や試験前の総復習にぜひご活用ください！';
+    const msgInput = document.getElementById('admin-msg-input');
+    const passInput = document.getElementById('admin-pass-input');
+    if (msgInput) msgInput.value = rawText;
+    if (passInput) passInput.value = '';
+    UI.openModal('modal-admin-msg');
+  }
+
+  function saveAdminMessage() {
+    const passInput = document.getElementById('admin-pass-input');
+    const msgInput = document.getElementById('admin-msg-input');
+    const inputPass = passInput ? passInput.value.trim() : '';
+    const inputMsg = msgInput ? msgInput.value.trim() : '';
+    const realPass = localStorage.getItem(ADMIN_PASS_KEY) || DEFAULT_ADMIN_PASS;
+
+    if (inputPass !== realPass) {
+      UI.showToast('パスワードが正しくありません（管理者専用機能です）', 'error');
+      return;
+    }
+
+    if (!inputMsg) {
+      UI.showToast('メッセージを入力してください', 'warning');
+      return;
+    }
+
+    const formattedMsg = '「' + UI.escapeHtml(inputMsg) + '」';
+    localStorage.setItem(ADMIN_MSG_KEY, formattedMsg);
+    renderAdminMessage();
+    UI.closeModal('modal-admin-msg');
+    UI.showToast('管理者メッセージを更新しました', 'success');
+  }
+
   return {
-    quickStart, openWrongReviewModal, startWrongReview, openSubjectSetup, setQuizType, setDifficulty,
+    quickStart: quickStartMixed, openWrongReviewModal, startWrongReview, openSubjectSetup, setQuizType, setDifficulty,
     startQuizFromSetup, openQuestionList, selectChoice, selectTF, submitAnswer, nextQuestion, quitQuiz,
     retryQuiz, retryWrong, generateQuestions, saveGeneratedQuestions,
     toggleTheme, toggleSetting, updateQuestionCount,
@@ -1447,6 +1601,11 @@ ${query}
     switchGenMode, handleFileUpload, removeFile, searchWeb,
     toggleQuestionEditMode, deleteQuestion, syncQuestions,
     openEditQuestion, saveEditedQuestion, openSubjectAnswerBreakdown,
-    saveApiKeyFromInput, deleteApiKey, renderApiKeyStatus
+    saveApiKeyFromInput, deleteApiKey, renderApiKeyStatus,
+    openQuickStartModal, quickStartMixed, quickStartSubject,
+    openFirebaseConfigModal, saveFirebaseConfig, deleteFirebaseConfig, uploadToFirebase,
+    removeGenQuestion, renderFirebaseStatus,
+    openAdminMsgModal, saveAdminMessage,
+    updateAppQuizData
   };
 })();

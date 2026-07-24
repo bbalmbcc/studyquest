@@ -1,0 +1,15 @@
+{
+  "name": "StudyQuest - 高校生向け定期試験対策",
+  "short_name": "StudyQuest",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#0f172a",
+  "background_color": "#0f172a",
+  "display": "standalone",
+  "start_url": "/"
+}

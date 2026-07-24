@@ -42,21 +42,73 @@ def find_ndlocr_lite():
     """ndlocr-lite のインストール場所を検索"""
     global NDLOCR_LITE_DIR, NDLOCR_LITE_AVAILABLE
 
-    # 1. 同じディレクトリ内の ndlocr-lite
-    local_path = os.path.join(STATIC_DIR, 'ndlocr-lite')
-    if os.path.isdir(local_path) and os.path.isfile(os.path.join(local_path, 'src', 'ocr.py')):
-        NDLOCR_LITE_DIR = local_path
-        NDLOCR_LITE_AVAILABLE = True
-        return
+    # 検索するディレクトリ名候補
+    search_names = [
+        'ndlocr-lite',
+        'ndlocr_lite_v1.2.1_windows',
+        'ndlocr_lite',
+    ]
+
+    # 1. 同じディレクトリ内を検索
+    for name in search_names:
+        local_path = os.path.join(STATIC_DIR, name)
+        if os.path.isdir(local_path):
+            # src/ocr.py があるか確認
+            ocr_script = os.path.join(local_path, 'src', 'ocr.py')
+            if os.path.isfile(ocr_script):
+                NDLOCR_LITE_DIR = local_path
+                NDLOCR_LITE_AVAILABLE = True
+                return
+            # ルート直下の ocr.py も確認
+            ocr_root = os.path.join(local_path, 'ocr.py')
+            if os.path.isfile(ocr_root):
+                NDLOCR_LITE_DIR = local_path
+                NDLOCR_LITE_AVAILABLE = True
+                return
+            # サブディレクトリ内を1階層探索
+            for sub in os.listdir(local_path):
+                sub_path = os.path.join(local_path, sub)
+                if os.path.isdir(sub_path):
+                    ocr_sub = os.path.join(sub_path, 'src', 'ocr.py')
+                    if os.path.isfile(ocr_sub):
+                        NDLOCR_LITE_DIR = sub_path
+                        NDLOCR_LITE_AVAILABLE = True
+                        return
 
     # 2. 親ディレクトリ
-    parent_path = os.path.join(os.path.dirname(STATIC_DIR), 'ndlocr-lite')
-    if os.path.isdir(parent_path) and os.path.isfile(os.path.join(parent_path, 'src', 'ocr.py')):
-        NDLOCR_LITE_DIR = parent_path
-        NDLOCR_LITE_AVAILABLE = True
-        return
+    for name in search_names:
+        parent_path = os.path.join(os.path.dirname(STATIC_DIR), name)
+        if os.path.isdir(parent_path) and os.path.isfile(os.path.join(parent_path, 'src', 'ocr.py')):
+            NDLOCR_LITE_DIR = parent_path
+            NDLOCR_LITE_AVAILABLE = True
+            return
 
-    # 3. コマンドとして使用可能か確認
+    # 3. ZIPが存在すれば自動展開
+    zip_path = os.path.join(STATIC_DIR, 'ndlocr_lite_v1.2.1_windows.zip')
+    if os.path.isfile(zip_path):
+        extract_dir = os.path.join(STATIC_DIR, 'ndlocr_lite_v1.2.1_windows')
+        if not os.path.isdir(extract_dir):
+            print(f"[INFO] ZIP展開中: {zip_path}")
+            import zipfile
+            try:
+                with zipfile.ZipFile(zip_path, 'r') as zf:
+                    zf.extractall(extract_dir)
+                print(f"[INFO] ZIP展開完了: {extract_dir}")
+            except Exception as e:
+                print(f"[ERROR] ZIP展開失敗: {e}")
+        # 展開後に再検索
+        if os.path.isdir(extract_dir):
+            for root, dirs, files in os.walk(extract_dir):
+                if 'ocr.py' in files:
+                    # src/ocr.py なら親を使う
+                    if os.path.basename(root) == 'src':
+                        NDLOCR_LITE_DIR = os.path.dirname(root)
+                    else:
+                        NDLOCR_LITE_DIR = root
+                    NDLOCR_LITE_AVAILABLE = True
+                    return
+
+    # 4. コマンドとして使用可能か確認
     try:
         result = subprocess.run(
             ['ndlocr-lite', '--help'],
