@@ -3,9 +3,67 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
-<meta name="description" content="高校生向け定期試験対策問題サイト - オフライン対応">
-<title>StudyQuest - 定期試験対策</title>
-<link rel="stylesheet" href="style.css?v=4">
+<title>StudyQuest - 高校生向け定期試験対策・学習支援</title>
+<meta name="description" content="StudyQuest（スタディクエスト）は高校生の定期試験対策、古文単語・英単語学習、暗記復習をサポートするWebアプリです。オフライン対応で快適に問題演習が行えます。">
+<link rel="canonical" href="https://example.com/">
+<meta name="robots" content="index, follow">
+
+<!-- Open Graph / OGP -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="StudyQuest - 高校生向け定期試験対策・学習支援">
+<meta property="og:description" content="高校生の定期試験対策、古文単語・英単語学習、暗記復習をサポートするWebアプリ。">
+<meta property="og:url" content="https://example.com/">
+<meta property="og:image" content="https://example.com/images/og-image.png">
+<meta property="og:site_name" content="StudyQuest">
+<meta property="og:locale" content="ja_JP">
+
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="StudyQuest - 高校生向け定期試験対策・学習支援">
+<meta name="twitter:description" content="高校生の定期試験対策、古文単語・英単語学習、暗記復習をサポートするWebアプリ。">
+<meta name="twitter:image" content="https://example.com/images/og-image.png">
+
+<!-- Favicon & Manifest -->
+<link rel="icon" href="favicon.ico">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="site.webmanifest">
+<link rel="stylesheet" href="style.css?v=5">
+
+<!-- Structured Data (JSON-LD) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://example.com/#website",
+      "url": "https://example.com/",
+      "name": "StudyQuest",
+      "description": "高校生向け定期試験対策問題・単語学習アプリ",
+      "inLanguage": "ja"
+    },
+    {
+      "@type": "Organization",
+      "@id": "https://example.com/#organization",
+      "name": "StudyQuest 運営チーム",
+      "url": "https://example.com/",
+      "logo": "https://example.com/apple-touch-icon.png"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://example.com/#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "ホーム",
+          "item": "https://example.com/"
+        }
+      ]
+    }
+  ]
+}
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js" defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js" defer></script>
 </head>
@@ -15,10 +73,36 @@
 
 <!-- ===== HOME ===== -->
 <section id="screen-home" class="screen active">
-<div class="dashboard-header">
+<div class="dashboard-header" style="position:relative">
+  <div id="syncStatus" style="position:absolute; top: 0; right: 0; font-size: 0.8rem; background: var(--surface); padding: 4px 8px; border-radius: 12px; border: 1px solid var(--border);"></div>
   <h1>📚 StudyQuest</h1>
-  <p>定期試験対策問題アプリ</p>
+  <p>高校生向け定期試験対策・学習支援プラットフォーム</p>
 </div>
+
+<!-- Site Description Block (i-FILTER / SEO Improvement) -->
+<section class="card" style="padding: 20px; margin-bottom: 24px; border-left: 4px solid var(--accent); background: var(--bg-card);" aria-label="サイトについて">
+  <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--accent);">StudyQuestへようこそ</h2>
+  <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
+    StudyQuest（スタディクエスト）は、高校生の日常学習や定期試験対策、単語テストの自学自習を効率化するためのWeb学習支援プラットフォームです。古文単語（古文単語330）や英単語（Bricks）のチェック、選択式・記述問題の演習、誤答復習をブラウザ上で完全オフライン対応にて利用できます。弱点分野のリアルタイム把握や試験前の効率的な復習により、着実な学力向上をサポートします。
+  </p>
+  <div class="last-updated-badge" style="margin-top: 12px;">最終更新日: <time datetime="2026-07-24">2026年7月24日</time></div>
+</section>
+
+<!-- Admin Message Block -->
+<section class="card" style="padding: 20px; margin-bottom: 24px; border-left: 4px solid var(--accent-secondary); background: var(--bg-card);" aria-label="管理者からのメッセージ">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+    <h2 style="font-size: 1.1rem; font-weight: 700; color: var(--accent-secondary); display: flex; align-items: center; gap: 8px; margin: 0;">
+      📢 管理者からのメッセージ
+    </h2>
+    <button class="btn btn-sm btn-secondary" onclick="if(window.App &amp;&amp; window.App.openAdminMsgModal){ App.openAdminMsgModal(); } else { UI.openModal('modal-admin-msg'); }" title="管理者専用メッセージ編集" style="font-size: 0.75rem; padding: 4px 8px;">✏️ 編集 (管理者専用)</button>
+  </div>
+  <p id="admin-message-display-text" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
+    「みなさんこんにちは！管理者 <strong>bbalmbcc</strong> です。日々新しい知識とスキルを身につけることで、皆さんの試験対策や学習習慣形成を強力にサポートします。自学自習や試験前の総復習にぜひご活用ください！」
+  </p>
+  <div style="margin-top: 12px; font-size: 0.85rem;">
+    管理者 X(Twitter): <a href="https://x.com/bbalmbcc_game" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600;">@bbalmbcc_game 🔗</a>
+  </div>
+</section>
 <div class="stats-row stagger" id="home-stats">
   <div class="card stat-card" onclick="App.openSubjectAnswerBreakdown()" style="cursor:pointer" title="教科別内訳を表示"><div class="stat-icon">📝</div><div class="stat-number" id="stat-total">0</div><div class="stat-desc">総回答数 <span style="font-size:0.65rem;color:var(--accent)">▼詳細</span></div></div>
   <div class="card stat-card"><div class="stat-icon">✅</div><div class="stat-number" id="stat-correct">0</div><div class="stat-desc">正解数</div></div>
@@ -26,8 +110,8 @@
   <div class="card stat-card"><div class="stat-icon">🔥</div><div class="stat-number" id="stat-streak">0</div><div class="stat-desc">連続正解</div></div>
 </div>
 <div class="quick-actions stagger">
-  <button class="card btn-block" onclick="App.quickStart()" id="btn-quick-start" style="text-align:center;padding:20px">
-    <div style="font-size:1.5rem;margin-bottom:8px">🚀</div><div style="font-weight:600">クイックスタート</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">ランダム出題</div>
+  <button class="card btn-block" onclick="App.openQuickStartModal()" id="btn-quick-start" style="text-align:center;padding:20px">
+    <div style="font-size:1.5rem;margin-bottom:8px">🚀</div><div style="font-weight:600">クイックスタート</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px">モード選択</div>
   </button>
   <button class="card btn-block" onclick="App.openWrongReviewModal()" id="btn-wrong-review" style="text-align:center;padding:20px">
     <div style="font-size:1.5rem;margin-bottom:8px">🔄</div><div style="font-weight:600">間違い復習</div><div style="font-size:.8rem;color:var(--text-muted);margin-top:4px" id="wrong-count-label">0問</div>
@@ -126,13 +210,20 @@
     <div class="text-muted" style="font-size:0.75rem">※ APIキーはこのブラウザのローカルストレージに保存されます。外部に送信されません。</div>
   </div>
 </div>
-<div class="settings-section card">
-  <h2>🔄 デバイス間同期</h2>
-  <div class="setting-row">
-    <div class="setting-info"><div class="setting-name">問題データを再読込</div><div class="setting-desc">他デバイスから追加された問題を反映します</div></div>
-    <button class="btn btn-sm btn-primary" onclick="App.syncQuestions()" id="btn-sync">🔄 同期</button>
+<div class="settings-section card" style="opacity: 0.7;">
+  <h2>🔄 クラウド同期 (Firebase) <span style="font-size: 0.75rem; color: var(--danger); background: rgba(239,68,68,0.15); padding: 2px 8px; border-radius: 8px; font-weight: normal; border: 1px solid rgba(239,68,68,0.3);">🚫 一時使用禁止中</span></h2>
+  <div class="setting-row" style="flex-direction:column;align-items:stretch;gap:12px">
+    <div class="setting-info">
+      <div class="setting-name">Firebase機能停止</div>
+      <div class="setting-desc" style="color: var(--warning);">※ 現在管理者の方針により、Firebaseによるクラウド同期機能は一時的に禁止・停止されています。アプリはローカル環境およびLocalStorageにて正常に動作いたします。</div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;" id="btn-firebase-config">⚙️ Firebase設定 (停止中)</button>
+      <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;" id="btn-sync">🔄 同期 (停止中)</button>
+      <button class="btn btn-sm btn-secondary" disabled style="opacity: 0.5; cursor: not-allowed;" id="btn-firebase-upload">📤 初期データアップロード (停止中)</button>
+    </div>
   </div>
-  <div id="sync-status" class="text-muted" style="font-size:.8rem;margin-top:8px"></div>
+  <div id="sync-status" class="text-muted" style="font-size:.8rem;margin-top:8px">※ Firebase同期は現在一時的に完全にオフとなっています</div>
 </div>
 <div class="settings-section card">
   <h2>データ管理</h2>
@@ -143,9 +234,24 @@
     <button class="btn btn-danger btn-block" onclick="App.clearAllData()">🗑️ すべてのデータを削除</button>
   </div>
   <div class="mt-16 text-muted" style="font-size:.8rem">使用容量: <span id="storage-usage">0 KB</span></div>
-</div>
 </section>
 </main>
+
+<!-- Common Footer -->
+<footer class="site-footer">
+  <div class="site-footer-inner">
+    <nav class="site-footer-nav" aria-label="フッターナビゲーション">
+      <a href="about/">About</a>
+      <a href="contact/">お問い合わせ</a>
+      <a href="privacy/">プライバシーポリシー</a>
+      <a href="terms/">利用規約</a>
+      <a href="sitemap/">サイトマップ</a>
+    </nav>
+    <div class="site-footer-copyright">
+      &copy; 2026 StudyQuest. All Rights Reserved.
+    </div>
+  </div>
+</footer>
 
 <!-- NAV -->
 <nav class="bottom-nav">
@@ -243,7 +349,13 @@
   <!-- ネット検索モード (Gemini AI + Search Grounding) -->
   <div id="gen-mode-web" class="gen-mode-content">
     <div class="form-group">
-      <label class="form-label">🤖 AI検索 (Gemini + Search Grounding)</label>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+        <label class="form-label" style="margin:0">🤖 AI検索 (Gemini + Search Grounding)</label>
+        <select id="web-search-model" class="input" style="width: auto; padding: 4px; font-size: 0.8rem;">
+          <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+          <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+        </select>
+      </div>
       <div class="web-search-input-row">
         <input type="text" class="input" id="web-search-query" placeholder="例: 光合成 仕組み, 関ヶ原の戦い, 二次方程式" onkeydown="if(event.key==='Enter')App.searchWeb()">
         <button class="btn btn-primary" onclick="App.searchWeb()" id="btn-web-search">🔍 AI検索</button>
@@ -300,12 +412,81 @@
 </div>
 </div>
 
+<div class="modal" id="modal-quick-start">
+<div class="modal-content" style="max-width:500px">
+  <div class="modal-header"><h2>🚀 クイックスタート</h2><button class="modal-close" onclick="UI.closeModal('modal-quick-start')">✕</button></div>
+  <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0">
+    <button class="card quick-start-mode" onclick="App.quickStartMixed()" style="padding:20px;text-align:left;cursor:pointer">
+      <div style="display:flex;align-items:center;gap:12px"><span style="font-size:1.5rem">🎲</span><div><div style="font-weight:700;font-size:1.05rem">教科混合モード</div><div class="text-muted" style="font-size:.85rem;margin-top:2px">全教科からランダムに出題</div></div></div>
+    </button>
+    <div style="font-weight:600;font-size:.9rem;color:var(--text-muted);padding:4px 0">📚 教科統一モード — 教科を選択:</div>
+    <div id="quick-start-subjects" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
+  </div>
+</div>
+</div>
+
+<div class="modal" id="modal-firebase-config">
+<div class="modal-content" style="max-width:550px">
+  <div class="modal-header"><h2>⚙️ Firebase設定</h2><button class="modal-close" onclick="UI.closeModal('modal-firebase-config')">✕</button></div>
+  <div class="form-group"><label class="form-label">Firebase設定JSON</label>
+    <textarea class="textarea" id="firebase-config-input" rows="8" placeholder='{
+  "apiKey": "AIza...",
+  "authDomain": "your-project.firebaseapp.com",
+  "databaseURL": "https://your-project-default-rtdb.firebaseio.com",
+  "projectId": "your-project",
+  "storageBucket": "your-project.appspot.com",
+  "messagingSenderId": "123456789",
+  "appId": "1:123:web:abc"
+}'></textarea>
+    <div class="text-muted" style="font-size:0.75rem;margin-top:6px">※ Firebaseコンソール → プロジェクト設定 → ウェブアプリ追加 からコピーしたfirebaseConfigオブジェクトを貼り付けてください</div>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-primary" onclick="App.saveFirebaseConfig()" style="flex:1">💾 保存して接続</button>
+    <button class="btn btn-danger" onclick="App.deleteFirebaseConfig()">🗑️ 削除</button>
+  </div>
+</div>
+</div>
+
+<div class="modal" id="modal-gen-review">
+<div class="modal-content" style="max-width:800px">
+  <div class="modal-header"><h2>✨ 生成された問題を確認</h2><button class="modal-close" onclick="UI.closeModal('modal-gen-review')">✕</button></div>
+  <div class="gen-review-stats" id="gen-review-stats" style="margin-bottom:12px"></div>
+  <div id="gen-review-list" style="max-height:55vh;overflow-y:auto;padding-right:8px"></div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn btn-primary" onclick="App.saveGeneratedQuestions()" style="flex:1">💾 すべて保存</button>
+    <button class="btn btn-secondary" onclick="UI.closeModal('modal-gen-review')">キャンセル</button>
+  </div>
+</div>
+</div>
+
+<div class="modal" id="modal-admin-msg">
+<div class="modal-content" style="max-width:550px">
+  <div class="modal-header">
+    <h2>✏️ 管理者メッセージの編集</h2>
+    <button class="modal-close" onclick="UI.closeModal('modal-admin-msg')">✕</button>
+  </div>
+  <div class="form-group">
+    <label class="form-label">管理者パスワード</label>
+    <input type="password" class="input" id="admin-pass-input" placeholder="パスワードを入力">
+  </div>
+  <div class="form-group">
+    <label class="form-label">掲載メッセージ内容</label>
+    <textarea class="textarea" id="admin-msg-input" rows="5" placeholder="トップページに掲載するメッセージを入力"></textarea>
+  </div>
+  <div style="display:flex;gap:8px;margin-top:16px">
+    <button class="btn btn-primary" onclick="App.saveAdminMessage()" style="flex:1">💾 保存して更新</button>
+    <button class="btn btn-secondary" onclick="UI.closeModal('modal-admin-msg')">キャンセル</button>
+  </div>
+</div>
+</div>
+
 <div id="toast-container"></div>
 
-<script src="modules/storage.js?v=2"></script>
-<script src="modules/ui.js?v=2"></script>
-<script src="modules/questionGenerator.js?v=2"></script>
-<script src="script.js?v=4"></script>
+<script src="modules/storage.js?v=3"></script>
+<script src="modules/ui.js?v=3"></script>
+<script src="modules/questionGenerator.js?v=3"></script>
+<script src="script.js?v=7"></script>
+<!-- <script type="module" src="main.js"></script> Firebase機能一時使用禁止中 -->
 <svg width="0" height="0" style="position:absolute">
   <defs>
     <linearGradient id="nav-gradient" x1="0%" y1="0%" x2="100%" y2="100%">

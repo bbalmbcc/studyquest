@@ -131,7 +131,8 @@ with open('data/questions.json', 'r', encoding='utf-8') as f:
     existing = json.load(f)
 
 existing_qs = [q for q in existing["questions"] if q["subjectId"] != "kobun330"]
-existing_qs.extend(questions)
+random.shuffle(questions)
+existing_qs.extend(questions[:2500])
 
 with open('data/questions.json', 'w', encoding='utf-8') as f:
     json.dump({"questions": existing_qs}, f, ensure_ascii=False, indent=2)

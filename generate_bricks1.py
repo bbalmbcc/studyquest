@@ -47,7 +47,8 @@ with open('data/questions.json', 'r', encoding='utf-8') as f:
 
 # 既存のbricks1の問題を除去して新しいものに置き換え
 existing_qs = [q for q in existing["questions"] if q["subjectId"] != "bricks1"]
-existing_qs.extend(questions)
+random.shuffle(questions)
+existing_qs.extend(questions[:2500])
 
 with open('data/questions.json', 'w', encoding='utf-8') as f:
     json.dump({"questions": existing_qs}, f, ensure_ascii=False, indent=2)

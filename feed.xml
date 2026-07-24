@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+<channel>
+  <title>StudyQuest - お知らせ・更新情報</title>
+  <link>https://example.com/</link>
+  <description>高校生向け定期試験対策問題・単語学習アプリ StudyQuest の最新更新情報</description>
+  <language>ja</language>
+  <lastBuildDate>Fri, 24 Jul 2026 22:45:00 +0900</lastBuildDate>
+  <atom:link href="https://example.com/feed.xml" rel="self" type="application/rss+xml" />
+  
+  <item>
+    <title>フィルタリング対策およびサイト情報の公開について</title>
+    <link>https://example.com/about/</link>
+    <description>StudyQuestの運営方針、お問い合わせ窓口、プライバシーポリシー、利用規約を公開・更新しました。</description>
+    <pubDate>Fri, 24 Jul 2026 22:45:00 +0900</pubDate>
+    <guid>https://example.com/about/#update-2026-07-24</guid>
+  </item>
+</channel>
+</rss>
