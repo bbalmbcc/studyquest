@@ -3,31 +3,32 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://generativelanguage.googleapis.com; img-src 'self' data: https:;">
 <title>StudyQuest - 高校生向け定期試験対策・学習支援</title>
-<meta name="description" content="StudyQuest（スタディクエスト）は高校生の定期試験対策、古文単語・英単語学習、暗記復習をサポートするWebアプリです。オフライン対応で快適に問題演習が行えます。">
-<link rel="canonical" href="https://example.com/">
+<meta name="description" content="StudyQuest（スタディクエスト）は、高校生の定期試験対策や古文単語・英単語の自学自習を効率化するWeb学習支援プラットフォームです。">
+<link rel="canonical" href="https://studyquestbeta.bbalmbcc.workers.dev/">
 <meta name="robots" content="index, follow">
 
 <!-- Open Graph / OGP -->
 <meta property="og:type" content="website">
 <meta property="og:title" content="StudyQuest - 高校生向け定期試験対策・学習支援">
-<meta property="og:description" content="高校生の定期試験対策、古文単語・英単語学習、暗記復習をサポートするWebアプリ。">
-<meta property="og:url" content="https://example.com/">
-<meta property="og:image" content="https://example.com/images/og-image.png">
+<meta property="og:description" content="StudyQuest（スタディクエスト）は、高校生の定期試験対策や古文単語・英単語の自学自習を効率化するWeb学習支援プラットフォームです。">
+<meta property="og:url" content="https://studyquestbeta.bbalmbcc.workers.dev/">
+<meta property="og:image" content="https://studyquestbeta.bbalmbcc.workers.dev/images/og-image.png">
 <meta property="og:site_name" content="StudyQuest">
 <meta property="og:locale" content="ja_JP">
 
 <!-- Twitter Card -->
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="StudyQuest - 高校生向け定期試験対策・学習支援">
-<meta name="twitter:description" content="高校生の定期試験対策、古文単語・英単語学習、暗記復習をサポートするWebアプリ。">
-<meta name="twitter:image" content="https://example.com/images/og-image.png">
+<meta name="twitter:description" content="StudyQuest（スタディクエスト）は、高校生の定期試験対策や古文単語・英単語の自学自習を効率化するWeb学習支援プラットフォームです。">
+<meta name="twitter:image" content="https://studyquestbeta.bbalmbcc.workers.dev/images/og-image.png">
 
 <!-- Favicon & Manifest -->
 <link rel="icon" href="favicon.ico">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="site.webmanifest">
-<link rel="stylesheet" href="style.css?v=5">
+<link rel="stylesheet" href="style.css?v=6">
 
 <!-- Structured Data (JSON-LD) -->
 <script type="application/ld+json">
@@ -35,29 +36,39 @@
   "@context": "https://schema.org",
   "@graph": [
     {
+      "@type": "WebApplication",
+      "@id": "https://studyquestbeta.bbalmbcc.workers.dev/#webapp",
+      "name": "StudyQuest",
+      "url": "https://studyquestbeta.bbalmbcc.workers.dev/",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "All",
+      "description": "高校生向け定期試験対策・単語テスト演習・学習支援プラットフォーム",
+      "inLanguage": "ja"
+    },
+    {
       "@type": "WebSite",
-      "@id": "https://example.com/#website",
-      "url": "https://example.com/",
+      "@id": "https://studyquestbeta.bbalmbcc.workers.dev/#website",
+      "url": "https://studyquestbeta.bbalmbcc.workers.dev/",
       "name": "StudyQuest",
       "description": "高校生向け定期試験対策問題・単語学習アプリ",
       "inLanguage": "ja"
     },
     {
       "@type": "Organization",
-      "@id": "https://example.com/#organization",
+      "@id": "https://studyquestbeta.bbalmbcc.workers.dev/#organization",
       "name": "StudyQuest 運営チーム",
-      "url": "https://example.com/",
-      "logo": "https://example.com/apple-touch-icon.png"
+      "url": "https://studyquestbeta.bbalmbcc.workers.dev/",
+      "logo": "https://studyquestbeta.bbalmbcc.workers.dev/apple-touch-icon.png"
     },
     {
       "@type": "BreadcrumbList",
-      "@id": "https://example.com/#breadcrumb",
+      "@id": "https://studyquestbeta.bbalmbcc.workers.dev/#breadcrumb",
       "itemListElement": [
         {
           "@type": "ListItem",
           "position": 1,
           "name": "ホーム",
-          "item": "https://example.com/"
+          "item": "https://studyquestbeta.bbalmbcc.workers.dev/"
         }
       ]
     }
@@ -85,7 +96,18 @@
   <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
     StudyQuest（スタディクエスト）は、高校生の日常学習や定期試験対策、単語テストの自学自習を効率化するためのWeb学習支援プラットフォームです。古文単語（古文単語330）や英単語（Bricks）のチェック、選択式・記述問題の演習、誤答復習をブラウザ上で完全オフライン対応にて利用できます。弱点分野のリアルタイム把握や試験前の効率的な復習により、着実な学力向上をサポートします。
   </p>
-  <div class="last-updated-badge" style="margin-top: 12px;">最終更新日: <time datetime="2026-07-24">2026年7月24日</time></div>
+  
+  <!-- クローラー向け静的教科・コンテンツ一覧 (i-FILTER不確定サイト対策) -->
+  <div class="static-content-summary" style="margin-top: 16px; padding: 14px; background: rgba(108, 99, 255, 0.08); border-radius: 8px;">
+    <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: var(--accent);">📖 対応教科・収録コンテンツ一覧</h3>
+    <ul style="padding-left: 20px; line-height: 1.8; font-size: 0.9rem; color: var(--text-primary); margin: 0;">
+      <li><strong>国語・古典</strong>：古文単語（古文単語330 等）、現代文重要語句、漢文句形演習</li>
+      <li><strong>英語</strong>：英単語・熟語（Bricks 1・2 等）、英文法、定期試験対策問題</li>
+      <li><strong>数学・理科・社会</strong>：高校定期試験に向けた選択問題・記述問題・一問一答演習</li>
+    </ul>
+  </div>
+
+  <div class="last-updated-badge" style="margin-top: 14px;">最終更新日: <time datetime="2026-10-23">2026年10月23日</time></div>
 </section>
 
 <!-- Admin Message Block -->
@@ -99,8 +121,9 @@
   <p id="admin-message-display-text" style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
     「みなさんこんにちは！管理者 <strong>bbalmbcc</strong> です。日々新しい知識とスキルを身につけることで、皆さんの試験対策や学習習慣形成を強力にサポートします。自学自習や試験前の総復習にぜひご活用ください！」
   </p>
-  <div style="margin-top: 12px; font-size: 0.85rem;">
-    管理者 X(Twitter): <a href="https://x.com/bbalmbcc_game" target="_blank" rel="noopener noreferrer" style="color: var(--accent); font-weight: 600;">@bbalmbcc_game 🔗</a>
+  <div style="margin-top: 12px; font-size: 0.85rem; color: var(--text-secondary); display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+    <span>公式連絡先: <a href="mailto:wewe35104@gmail.com" style="color: var(--accent); font-weight: 600;">wewe35104@gmail.com</a> (<a href="#contact-section" style="color: var(--accent); text-decoration: underline;">お問い合わせ</a>)</span>
+    <span>開発者個人X: <a href="https://x.com/bbalmbcc_game" target="_blank" rel="noopener noreferrer" style="color: var(--text-muted);">@bbalmbcc_game 🔗</a></span>
   </div>
 </section>
 <div class="stats-row stagger" id="home-stats">
@@ -131,14 +154,31 @@
 </section>
 
 <!-- ===== SUBJECTS ===== -->
-<section id="screen-subjects" class="screen">
-<h1 style="font-size:1.5rem;font-weight:700;margin-bottom:20px">教科を選択</h1>
+<section id="screen-subjects" class="screen" hidden aria-hidden="true">
+<h2 style="font-size:1.5rem;font-weight:700;margin-bottom:20px">教科を選択</h2>
 <div class="category-filter" id="category-filter"></div>
-<div class="card-grid stagger" id="subjects-grid"></div>
+<div class="card-grid stagger" id="subjects-grid">
+  <!-- クローラー向け初期静的コンテンツ (JSロード時に実データで上書き) -->
+  <div class="card subject-card" style="padding:16px;">
+    <div style="font-size:1.8rem;margin-bottom:8px">📖</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">国語・古典</div>
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">古文単語330、現代文重要語句、漢文句形演習</p>
+  </div>
+  <div class="card subject-card" style="padding:16px;">
+    <div style="font-size:1.8rem;margin-bottom:8px">🇬🇧</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">英語</div>
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Bricks 1・2、英単語・熟語、英文法演習</p>
+  </div>
+  <div class="card subject-card" style="padding:16px;">
+    <div style="font-size:1.8rem;margin-bottom:8px">📐</div>
+    <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">数学・理科・社会</div>
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">高校定期試験に向けた選択式・記述式・一問一答問題</p>
+  </div>
+</div>
 </section>
 
 <!-- ===== QUIZ ===== -->
-<section id="screen-quiz" class="screen">
+<section id="screen-quiz" class="screen" hidden aria-hidden="true">
 <div class="quiz-header">
   <div><span id="quiz-subject-name" style="font-weight:600"></span> <span id="quiz-unit-name" class="text-muted" style="font-size:.85rem"></span></div>
   <button class="btn btn-sm btn-secondary" onclick="App.quitQuiz()">終了</button>
@@ -153,9 +193,9 @@
 </section>
 
 <!-- ===== RESULTS ===== -->
-<section id="screen-results" class="screen">
+<section id="screen-results" class="screen" hidden aria-hidden="true">
 <div class="text-center">
-  <h1 style="font-size:1.5rem;font-weight:700;margin-bottom:8px">結果発表</h1>
+  <h2 style="font-size:1.5rem;font-weight:700;margin-bottom:8px">結果発表</h2>
   <div class="result-score-circle" id="result-circle" style="--score:0">
     <div class="result-score-inner"><div class="result-score-value" id="result-score">0</div><div class="result-score-label">点</div></div>
   </div>
@@ -170,12 +210,12 @@
   <button class="btn btn-secondary" onclick="App.retryWrong()">間違いだけ復習</button>
   <button class="btn btn-secondary" onclick="UI.navigateTo('home')">ホームへ</button>
 </div>
-<div class="mt-24"><h2 style="font-size:1.1rem;font-weight:600;margin-bottom:12px">解答一覧</h2><div id="result-review-list"></div></div>
+<div class="mt-24"><h3 style="font-size:1.1rem;font-weight:600;margin-bottom:12px">解答一覧</h3><div id="result-review-list"></div></div>
 </section>
 
 <!-- ===== SETTINGS ===== -->
-<section id="screen-settings" class="screen">
-<h1 style="font-size:1.5rem;font-weight:700;margin-bottom:24px">設定</h1>
+<section id="screen-settings" class="screen" hidden aria-hidden="true">
+<h2 style="font-size:1.5rem;font-weight:700;margin-bottom:24px">設定</h2>
 <div class="settings-section card">
   <h2>表示</h2>
   <div class="setting-row">
@@ -235,17 +275,115 @@
   </div>
   <div class="mt-16 text-muted" style="font-size:.8rem">使用容量: <span id="storage-usage">0 KB</span></div>
 </section>
+
+<!-- ===== 静的情報セクション (i-FILTER / 信頼性向上 / 単一ページ内完結) ===== -->
+<div class="static-info-container mt-24" style="border-top: 1px solid var(--border); padding-top: 24px;">
+  <!-- About -->
+  <section class="card mb-16" id="about-section" style="padding: 20px;" aria-label="当サイトについて">
+    <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      ℹ️ 当サイトについて (About)
+    </h2>
+    <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 8px;">StudyQuest（スタディクエスト）</h3>
+    <p style="font-size: 0.95rem; line-height: 1.7; color: var(--text-primary); margin-bottom: 12px;">
+      StudyQuestは、高校生の日常学習や定期試験対策、単語テスト（古文単語330、英単語Bricks等）の自学自習を支援する無料の教育用Webアプリケーションです。オフライン対応の単語チェック、選択式・記述式・○×形式の問題演習、間違い復習をブラウザ単体で手軽に実践できます。
+    </p>
+    <ul style="font-size: 0.9rem; line-height: 1.8; color: var(--text-secondary); margin: 0; padding-left: 20px;">
+      <li><strong>サイト目的</strong>: 高校生の定期試験対策および基礎学力の定着支援</li>
+      <li><strong>運営者</strong>: bbalmbcc (StudyQuest 運営チーム)</li>
+      <li><strong>料金</strong>: 完全無料（課金要素やゲーム要素は一切ありません）</li>
+      <li><strong>最終更新日</strong>: 2026年10月23日</li>
+    </ul>
+    <div style="margin-top: 12px;">
+      <a href="about/" style="font-size: 0.85rem; color: var(--accent); text-decoration: underline;">📄 詳細なAboutページはこちら</a>
+    </div>
+  </section>
+
+  <!-- お問い合わせ -->
+  <section class="card mb-16" id="contact-section" style="padding: 20px;" aria-label="お問い合わせ">
+    <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      ✉️ お問い合わせ (Contact)
+    </h2>
+    <p style="font-size: 0.95rem; line-height: 1.7; color: var(--text-primary); margin-bottom: 10px;">
+      StudyQuestに関する不具合報告・ご意見・お問い合わせは以下の連絡先までご連絡ください。
+    </p>
+    <div style="background: rgba(108, 99, 255, 0.08); padding: 12px 16px; border-radius: 8px; margin-bottom: 10px;">
+      <strong>公式メール窓口:</strong> <a href="mailto:wewe35104@gmail.com" style="color: var(--accent); font-weight: 600;">wewe35104@gmail.com</a>
+    </div>
+    <p style="font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin: 0;">
+      ※ 個人の学習サポート活動として運営されているため、返信にお時間をいただく場合や対応できない場合がございます。あらかじめご了承ください。
+    </p>
+    <div style="margin-top: 12px;">
+      <a href="contact/" style="font-size: 0.85rem; color: var(--accent); text-decoration: underline;">📄 詳細なお問い合わせ案内はこちら</a>
+    </div>
+  </section>
+
+  <!-- プライバシーポリシー -->
+  <section class="card mb-16" id="privacy-section" style="padding: 20px;" aria-label="プライバシーポリシー">
+    <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      🔒 プライバシーポリシー (Privacy Policy)
+    </h2>
+    <div style="font-size: 0.9rem; line-height: 1.7; color: var(--text-secondary);">
+      <p><strong>1. データの保存について</strong><br>ユーザーの学習進捗、正答率、設定情報はブラウザの内部ストレージ（LocalStorage）にのみ保存されます。ユーザーの学習データが外部サーバーへ無断送信されることは一切ありません。</p>
+      <p><strong>2. 外部通信・APIの利用について</strong><br>フォント表示のために Google Fonts（静的アセット配信）を利用しています。AI問題生成機能を明示的に使用する場合のみ、Google Gemini API への通信が発生します。</p>
+      <p><strong>3. 個人情報の取り扱い</strong><br>お問い合わせ等で受領したメールアドレス等の個人情報は、返信およびお問い合わせ内容への対応目的以外では使用いたしません。</p>
+    </div>
+    <div style="margin-top: 12px;">
+      <a href="privacy/" style="font-size: 0.85rem; color: var(--accent); text-decoration: underline;">📄 詳細なプライバシーポリシーはこちら</a>
+    </div>
+  </section>
+
+  <!-- 利用規約 -->
+  <section class="card mb-16" id="terms-section" style="padding: 20px;" aria-label="利用規約">
+    <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      📜 利用規約 (Terms of Use)
+    </h2>
+    <div style="font-size: 0.9rem; line-height: 1.7; color: var(--text-secondary);">
+      <p><strong>1. 利用目的・権利帰属</strong><br>当サイトは個人の自学自習および定期試験対策の補助を目的として提供されています。掲載されている教材名や商品名は各権利者に帰属し、学習内容の同定・指定の目的でのみ参照しています。</p>
+      <p><strong>2. 免責事項</strong><br>当サイトに掲載されている問題や解説等の正確性には配慮しておりますが、内容の完全性を保証するものではありません。当サイトの利用により生じたいかなる損害についても運営者は責任を負いかねます。</p>
+    </div>
+    <div style="margin-top: 12px;">
+      <a href="terms/" style="font-size: 0.85rem; color: var(--accent); text-decoration: underline;">📄 詳細な利用規約はこちら</a>
+    </div>
+  </section>
+
+  <!-- サイトマップ -->
+  <section class="card mb-16" id="sitemap-section" style="padding: 20px;" aria-label="サイトマップ">
+    <h2 style="font-size: 1.2rem; font-weight: 700; color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+      🗺️ サイトマップ (Sitemap)
+    </h2>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; font-size: 0.9rem;">
+      <div>
+        <strong>📌 主要機能</strong>
+        <ul style="padding-left: 20px; margin: 6px 0; line-height: 1.8;">
+          <li><a href="#" onclick="UI.navigateTo('home'); return false;" style="color: var(--accent);">ホーム / ダッシュボード</a></li>
+          <li><a href="#" onclick="UI.navigateTo('subjects'); return false;" style="color: var(--accent);">教科を選択</a></li>
+          <li><a href="#" onclick="UI.navigateTo('settings'); return false;" style="color: var(--accent);">設定</a></li>
+        </ul>
+      </div>
+      <div>
+        <strong>📄 サイト情報・ポリシー</strong>
+        <ul style="padding-left: 20px; margin: 6px 0; line-height: 1.8;">
+          <li><a href="#about-section" style="color: var(--accent);">当サイトについて (About)</a></li>
+          <li><a href="#contact-section" style="color: var(--accent);">お問い合わせ (Contact)</a></li>
+          <li><a href="#privacy-section" style="color: var(--accent);">プライバシーポリシー</a></li>
+          <li><a href="#terms-section" style="color: var(--accent);">利用規約</a></li>
+          <li><a href="sitemap/" style="color: var(--accent);">HTMLサイトマップ一覧</a></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</div>
 </main>
 
 <!-- Common Footer -->
 <footer class="site-footer">
   <div class="site-footer-inner">
     <nav class="site-footer-nav" aria-label="フッターナビゲーション">
-      <a href="about/">About</a>
-      <a href="contact/">お問い合わせ</a>
-      <a href="privacy/">プライバシーポリシー</a>
-      <a href="terms/">利用規約</a>
-      <a href="sitemap/">サイトマップ</a>
+      <a href="#about-section">About</a>
+      <a href="#contact-section">お問い合わせ</a>
+      <a href="#privacy-section">プライバシーポリシー</a>
+      <a href="#terms-section">利用規約</a>
+      <a href="#sitemap-section">サイトマップ</a>
     </nav>
     <div class="site-footer-copyright">
       &copy; 2026 StudyQuest. All Rights Reserved.
@@ -352,7 +490,7 @@
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
         <label class="form-label" style="margin:0">🤖 AI検索 (Gemini + Search Grounding)</label>
         <select id="web-search-model" class="input" style="width: auto; padding: 4px; font-size: 0.8rem;">
-          <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+          <option value="gemini-3.8-flash" selected>Gemini 3.8 Flash</option>
           <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
         </select>
       </div>
@@ -483,9 +621,9 @@
 <div id="toast-container"></div>
 
 <script src="modules/storage.js?v=3"></script>
-<script src="modules/ui.js?v=3"></script>
+<script src="modules/ui.js?v=4"></script>
 <script src="modules/questionGenerator.js?v=3"></script>
-<script src="script.js?v=7"></script>
+<script src="script.js?v=9"></script>
 <!-- <script type="module" src="main.js"></script> Firebase機能一時使用禁止中 -->
 <svg width="0" height="0" style="position:absolute">
   <defs>

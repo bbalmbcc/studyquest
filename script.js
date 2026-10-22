@@ -1055,7 +1055,7 @@ window.App = (function () {
 
   // === Gemini API + Search Grounding 設定 ===
   const GEMINI_API_KEY_STORAGE = 'studyquest_geminiApiKey';
-  const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
+  const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
   function getGeminiApiKey() {
     return localStorage.getItem(GEMINI_API_KEY_STORAGE) || '';
@@ -1359,7 +1359,15 @@ ${query}
         '<div class="text-muted" style="font-size:0.8rem;margin-top:8px;text-align:center">↑ 上記のテキストから問題を生成します。下の「問題を生成」ボタンを押してください。</div>';
     } catch (err) {
       console.error('Gemini API Error:', err);
-      statusEl.innerHTML = '<div class="web-search-error">❌ AI検索エラー: ' + escapeHtml(err.message || String(err)) + '</div>';
+      const errMsg = err.message || String(err);
+      let filterHint = '';
+      if (err.status === 403 || err.status === 0 || /failed to fetch|network|block|refused|cors/i.test(errMsg)) {
+        filterHint = '<div style="margin-top:8px;padding:8px 12px;background:rgba(239,68,68,0.1);border-radius:6px;font-size:0.8rem;color:var(--text-secondary);line-height:1.6">' +
+          '⚠️ <strong>学校等のネットワーク制限の可能性があります：</strong><br>' +
+          '学校のi-FILTERやファイアウォール設定により、AI生成APIへの通信がブロックされた可能性があります。内蔵の問題セット（国語・英語・定期試験問題）をご利用いただくか、ご自宅などの一般ネットワーク環境でお試しください。' +
+          '</div>';
+      }
+      statusEl.innerHTML = '<div class="web-search-error">❌ AI検索エラー: ' + escapeHtml(errMsg) + '</div>' + filterHint;
     } finally {
       searchBtn.disabled = false;
       updateSearchRemaining();

@@ -8,6 +8,18 @@ window.UI = (function () {
   function init() {
     applyTheme(window.Storage.getSettings().theme);
     setupNavigation();
+    // 初期画面以外の非表示制御 (Task 5: アクセシビリティ・i-FILTER構造化対策)
+    screens.forEach(s => {
+      const el = document.getElementById('screen-' + s);
+      if (!el) return;
+      if (s === currentScreen) {
+        el.removeAttribute('hidden');
+        el.removeAttribute('aria-hidden');
+      } else {
+        el.setAttribute('hidden', '');
+        el.setAttribute('aria-hidden', 'true');
+      }
+    });
   }
 
   // --- 画面遷移 ---
@@ -17,23 +29,28 @@ window.UI = (function () {
     const next = document.getElementById('screen-' + screenId);
     if (!next) return;
 
-    if (current) {
+    if (current && current !== next) {
       current.classList.add('fade-out');
       setTimeout(() => {
         current.classList.remove('active', 'fade-out');
+        current.setAttribute('hidden', '');
+        current.setAttribute('aria-hidden', 'true');
       }, 300);
     }
+
+    next.removeAttribute('hidden');
+    next.removeAttribute('aria-hidden');
 
     setTimeout(() => {
       next.classList.add('active', 'fade-in');
       setTimeout(() => next.classList.remove('fade-in'), 300);
-    }, current ? 300 : 0);
+    }, (current && current !== next) ? 300 : 0);
 
     currentScreen = screenId;
     updateNavActive(screenId);
 
     if (options && options.onEnter) {
-      setTimeout(options.onEnter, current ? 350 : 50);
+      setTimeout(options.onEnter, (current && current !== next) ? 350 : 50);
     }
   }
 
