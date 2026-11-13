@@ -7,8 +7,10 @@ window.App = (function () {
   let currentQuiz = { questions: [], currentIndex: 0, answers: [], subjectId: '', config: {} };
   let quizTypeFilter = 'all';
   let difficultyFilter = 'all';
+  let quizDirectionFilter = 'random';
   let selectedSubjectId = '';
   let questionEditMode = false;
+  let target1900Cache = null;
 
   // === 初期化 ===
   async function init() {
@@ -22,14 +24,177 @@ window.App = (function () {
     // Firebase同期はmain.js (ES Module) が担当
   }
 
+  // ターゲット1900単語データから決定論的に問題群を構築する
+  function buildTarget1900Questions(vocabJson) {
+    if (!vocabJson || !vocabJson.units) return [];
+    const flatWords = [];
+    for (const [uid, list] of Object.entries(vocabJson.units)) {
+      for (const item of list) {
+        flatWords.push({ ...item, unitId: uid });
+      }
+    }
+    flatWords.sort((a, b) => a.num - b.num);
+    const total = flatWords.length;
+    if (total < 4) return [];
+
+    const stripNotes = (s) => s.replace(/[\(（〔［][^)）〕］]*[\)）〕］]/g, '').replace(/^(を|に|へ|と|から|より|で)/, '').trim();
+    const buildAltMeanings = (entry) => {
+      const alts = new Set();
+      const rawList = Array.isArray(entry.meanings) && entry.meanings.length > 0 ? entry.meanings : [entry.meaning];
+      for (const m of rawList) {
+        if (!m) continue;
+        alts.add(m);
+        const noParen = m.replace(/[\(（〔［][^)）〕］]*[\)）〕］]/g, '').trim();
+        if (noParen) alts.add(noParen);
+        const stripped = stripNotes(m);
+        if (stripped) alts.add(stripped);
+        for (const sub of noParen.split(/[，、,]/)) {
+          const t = sub.trim();
+          if (t) {
+            alts.add(t);
+            const t2 = stripNotes(t);
+            if (t2) alts.add(t2);
+          }
+        }
+      }
+      alts.delete(entry.meaning);
+      return Array.from(alts);
+    };
+
+    const pickWrongIndices = (idx) => {
+      const picked = [];
+      const offsets = [37, 193, 541, 79, 271, 613];
+      let step = 0;
+      while (picked.length < 3 && step < total) {
+        const cand = (idx + offsets[step % offsets.length] + step * 7) % total;
+        if (cand !== idx && !picked.includes(cand) &&
+            flatWords[cand].word !== flatWords[idx].word &&
+            flatWords[cand].meaning !== flatWords[idx].meaning) {
+          picked.push(cand);
+        }
+        step++;
+      }
+      return picked;
+    };
+
+    const shuffleDeterministic = (arr, seed) => {
+      const copy = arr.slice();
+      for (let i = copy.length - 1; i > 0; i--) {
+        const j = (seed * (i + 13) + i * 7) % (i + 1);
+        [copy[i], copy[j]] = [copy[j], copy[i]];
+      }
+      return copy;
+    };
+
+    const generated = [];
+    for (let i = 0; i < total; i++) {
+      const w = flatWords[i];
+      const wrongs = pickWrongIndices(i);
+      const exp = `No.${w.num} ${w.word}：${w.meaning}`;
+      const alts = buildAltMeanings(w);
+
+      // 英語→日本語：選択式
+      generated.push({
+        id: `target1900-${w.num}-ej-c`,
+        subjectId: 'target1900',
+        unitId: w.unitId,
+        wordNum: w.num,
+        direction: 'ej',
+        type: '選択',
+        question: `No.${w.num} 「${w.word}」の意味は？`,
+        answer: w.meaning,
+        choices: shuffleDeterministic([w.meaning, ...wrongs.map(idx => flatWords[idx].meaning)], w.num),
+        explanation: exp
+      });
+
+      // 英語→日本語：記述式
+      generated.push({
+        id: `target1900-${w.num}-ej-w`,
+        subjectId: 'target1900',
+        unitId: w.unitId,
+        wordNum: w.num,
+        direction: 'ej',
+        type: '記述',
+        question: `No.${w.num} 「${w.word}」の意味を日本語で答えよ。`,
+        answer: w.meaning,
+        alternativeAnswers: alts,
+        explanation: exp
+      });
+
+      // 英語→日本語：○×
+      const ejIsTrue = (w.num % 2 === 1);
+      const ejShownMeaning = ejIsTrue ? w.meaning : flatWords[wrongs[0]].meaning;
+      generated.push({
+        id: `target1900-${w.num}-ej-tf`,
+        subjectId: 'target1900',
+        unitId: w.unitId,
+        wordNum: w.num,
+        direction: 'ej',
+        type: '○×',
+        question: `No.${w.num} 「${w.word}」は「${ejShownMeaning}」という意味である。`,
+        answer: ejIsTrue ? '○' : '×',
+        explanation: exp
+      });
+
+      // 日本語→英語：選択式
+      generated.push({
+        id: `target1900-${w.num}-je-c`,
+        subjectId: 'target1900',
+        unitId: w.unitId,
+        wordNum: w.num,
+        direction: 'je',
+        type: '選択',
+        question: `No.${w.num} 「${w.meaning}」を表す英単語は？`,
+        answer: w.word,
+        choices: shuffleDeterministic([w.word, ...wrongs.map(idx => flatWords[idx].word)], w.num + 11),
+        explanation: exp
+      });
+
+      // 日本語→英語：記述式
+      generated.push({
+        id: `target1900-${w.num}-je-w`,
+        subjectId: 'target1900',
+        unitId: w.unitId,
+        wordNum: w.num,
+        direction: 'je',
+        type: '記述',
+        question: `No.${w.num} 「${w.meaning}」を英語で答えよ。`,
+        answer: w.word,
+        explanation: exp
+      });
+
+      // 日本語→英語：○×
+      const jeIsTrue = (w.num % 2 === 0);
+      const jeShownWord = jeIsTrue ? w.word : flatWords[wrongs[1]].word;
+      generated.push({
+        id: `target1900-${w.num}-je-tf`,
+        subjectId: 'target1900',
+        unitId: w.unitId,
+        wordNum: w.num,
+        direction: 'je',
+        type: '○×',
+        question: `No.${w.num} 「${w.meaning}」を表す英単語は「${jeShownWord}」である。`,
+        answer: jeIsTrue ? '○' : '×',
+        explanation: exp
+      });
+    }
+    return generated;
+  }
+
   async function loadData() {
     try {
-      const [subRes, qRes] = await Promise.all([
+      const [subRes, qRes, t1900Res] = await Promise.all([
         fetch('data/subjects.json?t=' + Date.now()).then(r => r.json()),
-        fetch('data/questions.json?t=' + Date.now()).then(r => r.json())
+        fetch('data/questions.json?t=' + Date.now()).then(r => r.json()),
+        fetch('data/vocab_target1900.json?t=' + Date.now()).then(r => r.ok ? r.json() : null).catch(() => null)
       ]);
       subjects = subRes.subjects || [];
       allQuestions = qRes.questions || [];
+      if (t1900Res) {
+        target1900Cache = t1900Res;
+        const t1900Questions = buildTarget1900Questions(t1900Res);
+        allQuestions = allQuestions.concat(t1900Questions);
+      }
       // カスタム問題を追加（サーバーにまだ反映されていないもの）
       const custom = Storage.getCustomQuestions();
       const serverIds = new Set(allQuestions.map(q => q.id));
@@ -150,22 +315,102 @@ window.App = (function () {
   function filterCategory(cat) { renderSubjects(cat); }
 
   // === 出題設定 ===
+  function getSetupRange() {
+    const startEl = document.getElementById('setup-range-start');
+    const endEl = document.getElementById('setup-range-end');
+    let start = startEl ? parseInt(startEl.value, 10) : 1;
+    let end = endEl ? parseInt(endEl.value, 10) : 1900;
+    if (isNaN(start) || start < 1) start = 1;
+    if (isNaN(end) || end > 1900) end = 1900;
+    if (start > 1900) start = 1900;
+    if (end < 1) end = 1;
+    if (start > end) { const tmp = start; start = end; end = tmp; }
+    return { start, end };
+  }
+
+  function getFilteredSetupPool() {
+    const unitId = document.getElementById('setup-unit') ? document.getElementById('setup-unit').value : 'all';
+    const isTarget1900 = selectedSubjectId === 'target1900';
+    let pool = allQuestions.filter(q => q.subjectId === selectedSubjectId);
+    if (isTarget1900) {
+      const { start, end } = getSetupRange();
+      pool = pool.filter(q => q.wordNum >= start && q.wordNum <= end);
+      if (quizDirectionFilter && quizDirectionFilter !== 'random') {
+        pool = pool.filter(q => q.direction === quizDirectionFilter);
+      }
+    } else {
+      if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
+      if (difficultyFilter && difficultyFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(difficultyFilter));
+    }
+    if (quizTypeFilter && quizTypeFilter !== 'all') pool = pool.filter(q => q.type === quizTypeFilter);
+    return pool;
+  }
+
   function openSubjectSetup(subjectId) {
     selectedSubjectId = subjectId;
     const subj = subjects.find(s => s.id === subjectId);
     if (!subj) return;
+    const isTarget1900 = subjectId === 'target1900';
+
     document.getElementById('setup-subject-title').textContent = subj.name + ' - 出題設定';
     const unitSelect = document.getElementById('setup-unit');
     unitSelect.innerHTML = '<option value="all">すべて</option>' + subj.units.map(u => '<option value="' + u.id + '">' + u.name + '</option>').join('');
     quizTypeFilter = 'all';
     difficultyFilter = 'all';
+    quizDirectionFilter = 'random';
     document.querySelectorAll('#filter-type-group [data-type]').forEach(b => b.classList.toggle('active', b.dataset.type === 'all'));
     document.querySelectorAll('#filter-diff-group [data-diff]').forEach(b => b.classList.toggle('active', b.dataset.diff === 'all'));
+    document.querySelectorAll('#filter-direction-group [data-dir]').forEach(b => b.classList.toggle('active', b.dataset.dir === 'random'));
+
+    // ターゲット1900専用UIの切り替え（難易度廃止・範囲指定・出題方式追加）
+    const diffContainer = document.getElementById('setup-diff-group-container');
+    const summaryDiffItem = document.getElementById('summary-diff-item');
+    const dirContainer = document.getElementById('setup-direction-group-container');
+    const summaryDirItem = document.getElementById('summary-dir-item');
+    const rangeContainer = document.getElementById('setup-range-group-container');
+    const summaryRangeItem = document.getElementById('summary-range-item');
+
+    if (diffContainer) diffContainer.style.display = isTarget1900 ? 'none' : 'block';
+    if (summaryDiffItem) summaryDiffItem.style.display = isTarget1900 ? 'none' : '';
+    if (dirContainer) dirContainer.style.display = isTarget1900 ? 'block' : 'none';
+    if (summaryDirItem) summaryDirItem.style.display = isTarget1900 ? '' : 'none';
+    if (rangeContainer) rangeContainer.style.display = isTarget1900 ? 'block' : 'none';
+    if (summaryRangeItem) summaryRangeItem.style.display = isTarget1900 ? '' : 'none';
+
+    const rangeStartEl = document.getElementById('setup-range-start');
+    const rangeEndEl = document.getElementById('setup-range-end');
+    if (isTarget1900 && rangeStartEl && rangeEndEl) {
+      rangeStartEl.value = 1;
+      rangeEndEl.value = 1900;
+      const syncRangeInput = () => {
+        unitSelect.value = 'all';
+        updateFilterSummary();
+      };
+      rangeStartEl.oninput = syncRangeInput;
+      rangeEndEl.oninput = syncRangeInput;
+    }
+
     // 単語帳教科の場合は「単語一覧を見る」ボタンを表示
     const vocabBtn = document.getElementById('btn-vocab-list');
-    vocabBtn.style.display = (subjectId === 'bricks1' || subjectId === 'kobun330') ? 'block' : 'none';
-    // 単元変更時にもサマリーを更新
-    unitSelect.onchange = function() { updateFilterSummary(); };
+    vocabBtn.style.display = (subjectId === 'bricks1' || subjectId === 'kobun330' || subjectId === 'target1900') ? 'block' : 'none';
+
+    // 単元変更時にもサマリーと番号範囲を連動更新
+    unitSelect.onchange = function() {
+      if (isTarget1900 && rangeStartEl && rangeEndEl) {
+        if (unitSelect.value === 'all') {
+          rangeStartEl.value = 1;
+          rangeEndEl.value = 1900;
+        } else {
+          const match = unitSelect.value.match(/^target1900-u(\d+)$/);
+          if (match) {
+            const idx = parseInt(match[1], 10);
+            rangeStartEl.value = (idx - 1) * 100 + 1;
+            rangeEndEl.value = idx * 100;
+          }
+        }
+      }
+      updateFilterSummary();
+    };
     updateFilterSummary();
     UI.openModal('modal-subject-setup');
   }
@@ -184,41 +429,56 @@ window.App = (function () {
     updateFilterSummary();
   }
 
+  function setQuizDirection(btn) {
+    quizDirectionFilter = btn.dataset.dir;
+    btn.closest('.filter-btn-group').querySelectorAll('.btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    updateFilterSummary();
+  }
+
   function updateFilterSummary() {
     const typeLabels = { 'all': 'すべて', '選択': '選択式', '記述': '記述式', '○×': '○×' };
     const diffLabels = { 'all': 'すべて', '1': '基礎', '2': '標準', '3': '応用' };
+    const dirLabels = { 'ej': '英語→日本語', 'je': '日本語→英語', 'random': 'ランダム' };
     const summaryType = document.getElementById('summary-type');
     const summaryDiff = document.getElementById('summary-diff');
+    const summaryDir = document.getElementById('summary-dir');
+    const summaryRange = document.getElementById('summary-range');
     const summaryCount = document.getElementById('summary-count');
     if (summaryType) summaryType.textContent = typeLabels[quizTypeFilter] || quizTypeFilter;
     if (summaryDiff) summaryDiff.textContent = diffLabels[difficultyFilter] || difficultyFilter;
-    // 対象問題数を計算
-    const unitId = document.getElementById('setup-unit') ? document.getElementById('setup-unit').value : 'all';
-    let pool = allQuestions.filter(q => q.subjectId === selectedSubjectId);
-    if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
-    if (quizTypeFilter && quizTypeFilter !== 'all') pool = pool.filter(q => q.type === quizTypeFilter);
-    if (difficultyFilter && difficultyFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(difficultyFilter));
+    if (summaryDir) summaryDir.textContent = dirLabels[quizDirectionFilter] || quizDirectionFilter;
+    if (summaryRange && selectedSubjectId === 'target1900') {
+      const { start, end } = getSetupRange();
+      summaryRange.textContent = `No.${start}〜${end}`;
+    }
+    const pool = getFilteredSetupPool();
     if (summaryCount) summaryCount.textContent = pool.length + '問';
   }
 
   // === クイズエンジン ===
   function startQuizFromSetup() {
     const unitId = document.getElementById('setup-unit').value;
+    const extraOpts = selectedSubjectId === 'target1900'
+      ? { directionFilter: quizDirectionFilter, range: getSetupRange() }
+      : null;
     UI.closeModal('modal-subject-setup');
-    startQuiz(selectedSubjectId, unitId, quizTypeFilter, difficultyFilter);
+    startQuiz(selectedSubjectId, unitId, quizTypeFilter, difficultyFilter, extraOpts);
   }
 
   function openQuestionList() {
     const unitId = document.getElementById('setup-unit').value;
-    let pool = allQuestions.filter(q => q.subjectId === selectedSubjectId);
-    if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
-    if (quizTypeFilter && quizTypeFilter !== 'all') pool = pool.filter(q => q.type === quizTypeFilter);
-    if (difficultyFilter && difficultyFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(difficultyFilter));
+    const pool = getFilteredSetupPool();
 
     const subj = subjects.find(s => s.id === selectedSubjectId);
     const unit = subj && unitId !== 'all' ? subj.units.find(u => u.id === unitId) : null;
+    let rangeSuffix = '';
+    if (selectedSubjectId === 'target1900') {
+      const { start, end } = getSetupRange();
+      rangeSuffix = ` (No.${start}〜${end})`;
+    }
     
-    document.getElementById('qlist-title').textContent = (subj ? subj.name : '') + (unit ? ' / ' + unit.name : '') + ' の問題一覧';
+    document.getElementById('qlist-title').textContent = (subj ? subj.name : '') + (unit ? ' / ' + unit.name : rangeSuffix) + ' の問題一覧';
     document.getElementById('qlist-stats').textContent = `全 ${pool.length} 問`;
     questionEditMode = false;
     const editBtn = document.getElementById('btn-qlist-edit');
@@ -228,32 +488,31 @@ window.App = (function () {
     UI.openModal('modal-question-list');
   }
 
-  function renderQuestionList(pool) {
+  function renderQuestionList(pool, limit = 200) {
     if (!pool) {
-      // 現在のフィルター条件で再取得
-      const unitId = document.getElementById('setup-unit') ? document.getElementById('setup-unit').value : 'all';
-      pool = allQuestions.filter(q => q.subjectId === selectedSubjectId);
-      if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
-      if (quizTypeFilter && quizTypeFilter !== 'all') pool = pool.filter(q => q.type === quizTypeFilter);
-      if (difficultyFilter && difficultyFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(difficultyFilter));
+      pool = getFilteredSetupPool();
     }
-    document.getElementById('qlist-stats').textContent = `全 ${pool.length} 問`;
+    document.getElementById('qlist-stats').textContent = `全 ${pool.length} 問` + (pool.length > limit ? `（先頭 ${limit} 問を表示中）` : '');
     const container = document.getElementById('qlist-container');
     if (pool.length === 0) {
       container.innerHTML = '<p class="text-muted" style="text-align:center;padding:20px">該当する問題がありません</p>';
     } else {
-      container.innerHTML = pool.map(q => {
+      const slice = pool.slice(0, limit);
+      const itemsHtml = slice.map(q => {
         let ansText = escapeHtml(q.answer);
         if (q.type === '選択' && q.choices) {
             ansText = escapeHtml(q.answer) + ' <span style="font-size:0.8rem;color:var(--text-muted)">（他: ' + escapeHtml(q.choices.filter(c => c !== q.answer).join(', ')) + '）</span>';
         }
         const deleteBtn = questionEditMode ? `<button class="btn-delete-question" onclick="event.stopPropagation();App.deleteQuestion('${escapeAttr(q.id)}')" title="この問題を削除">✕</button>` : '';
         const editBtn2 = questionEditMode ? `<button class="btn-edit-question" onclick="event.stopPropagation();App.openEditQuestion('${escapeAttr(q.id)}')" title="この問題を編集">✏️</button>` : '';
+        const metaBadge = q.subjectId === 'target1900'
+          ? `<span style="font-size:0.8rem;color:var(--text-muted)">No.${q.wordNum} / ${q.direction === 'ej' ? '英→日' : '日→英'}</span>`
+          : `<span style="font-size:0.8rem;color:var(--text-muted)">難易度: ${q.difficulty}</span>`;
         return `<div class="qlist-item ${questionEditMode ? 'edit-mode' : ''}" data-qid="${escapeAttr(q.id)}">
             <div class="qlist-item-header">
               <div style="display:flex;align-items:center;gap:8px">
                 <span class="qlist-type-badge">${q.type}</span>
-                <span style="font-size:0.8rem;color:var(--text-muted)">難易度: ${q.difficulty}</span>
+                ${metaBadge}
               </div>
               <div style="display:flex;gap:6px">${editBtn2}${deleteBtn}</div>
             </div>
@@ -261,6 +520,14 @@ window.App = (function () {
             <div class="qlist-answer"><span style="font-weight:bold;color:var(--correct)">正解:</span> ${ansText}</div>
           </div>`;
       }).join('');
+      const moreBtn = pool.length > limit
+        ? `<div class="text-center mt-16"><button class="btn btn-secondary btn-sm" id="btn-qlist-more">さらに表示（残り ${pool.length - limit} 問）</button></div>`
+        : '';
+      container.innerHTML = itemsHtml + moreBtn;
+      const moreEl = document.getElementById('btn-qlist-more');
+      if (moreEl) {
+        moreEl.onclick = () => renderQuestionList(pool, limit + 200);
+      }
     }
   }
 
@@ -295,11 +562,20 @@ window.App = (function () {
     });
   }
 
-  function startQuiz(subjectId, unitId, typeFilter, diffFilter) {
+  function startQuiz(subjectId, unitId, typeFilter, diffFilter, extraOpts) {
     let pool = allQuestions.filter(q => q.subjectId === subjectId);
-    if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
+    if (subjectId === 'target1900' && extraOpts) {
+      if (extraOpts.range) {
+        pool = pool.filter(q => q.wordNum >= extraOpts.range.start && q.wordNum <= extraOpts.range.end);
+      }
+      if (extraOpts.directionFilter && extraOpts.directionFilter !== 'random') {
+        pool = pool.filter(q => q.direction === extraOpts.directionFilter);
+      }
+    } else {
+      if (unitId && unitId !== 'all') pool = pool.filter(q => q.unitId === unitId);
+      if (diffFilter && diffFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(diffFilter));
+    }
     if (typeFilter && typeFilter !== 'all') pool = pool.filter(q => q.type === typeFilter);
-    if (diffFilter && diffFilter !== 'all') pool = pool.filter(q => q.difficulty === parseInt(diffFilter));
 
     if (pool.length === 0) { UI.showToast('該当する問題がありません', 'warning'); return; }
 
@@ -307,12 +583,17 @@ window.App = (function () {
     const count = Math.min(pool.length, settings.questionCount);
     const shuffled = shuffleArray(pool).slice(0, count);
 
-    currentQuiz = { questions: shuffled, currentIndex: 0, answers: [], subjectId: subjectId, config: { unitId, typeFilter, diffFilter } };
+    currentQuiz = { questions: shuffled, currentIndex: 0, answers: [], subjectId: subjectId, config: { unitId, typeFilter, diffFilter, extraOpts } };
 
     const subj = subjects.find(s => s.id === subjectId);
     document.getElementById('quiz-subject-name').textContent = subj ? subj.name : '';
     const unit = subj ? subj.units.find(u => u.id === unitId) : null;
-    document.getElementById('quiz-unit-name').textContent = unit ? '/ ' + unit.name : '';
+    let unitLabel = unit ? '/ ' + unit.name : '';
+    if (subjectId === 'target1900' && extraOpts && extraOpts.range) {
+      const dirText = extraOpts.directionFilter === 'ej' ? '英→日' : (extraOpts.directionFilter === 'je' ? '日→英' : 'ランダム');
+      unitLabel = `/ No.${extraOpts.range.start}〜${extraOpts.range.end} (${dirText})`;
+    }
+    document.getElementById('quiz-unit-name').textContent = unitLabel;
 
     UI.navigateTo('quiz', { onEnter: () => renderQuestion() });
   }
@@ -981,11 +1262,20 @@ window.App = (function () {
   async function openVocabList() {
     const subj = subjects.find(s => s.id === selectedSubjectId);
     if (!subj) return;
-    const file = selectedSubjectId === 'bricks1' ? 'data/vocab_bricks1.json' : 'data/vocab_kobun330.json';
-    try {
-      const res = await fetch(file + '?t=' + Date.now());
-      vocabData = await res.json();
-    } catch(e) { UI.showToast('単語データを読み込めませんでした', 'error'); return; }
+    if (selectedSubjectId === 'target1900' && target1900Cache) {
+      vocabData = target1900Cache;
+    } else {
+      const vocabFiles = {
+        bricks1: 'data/vocab_bricks1.json',
+        kobun330: 'data/vocab_kobun330.json',
+        target1900: 'data/vocab_target1900.json'
+      };
+      const file = vocabFiles[selectedSubjectId] || 'data/vocab_kobun330.json';
+      try {
+        const res = await fetch(file + '?t=' + Date.now());
+        vocabData = await res.json();
+      } catch(e) { UI.showToast('単語データを読み込めませんでした', 'error'); return; }
+    }
 
     document.getElementById('vocab-title').textContent = subj.name + ' - 単語一覧';
     const unitSel = document.getElementById('vocab-unit-select');
@@ -1003,7 +1293,7 @@ window.App = (function () {
     let totalCount = 0;
 
     const unitsToShow = unitId === 'all' ? Object.keys(vocabData.units) : [unitId];
-    const isBricks = selectedSubjectId === 'bricks1';
+    const isEnglish = selectedSubjectId === 'bricks1' || selectedSubjectId === 'target1900';
 
     for (const uid of unitsToShow) {
       const words = vocabData.units[uid];
@@ -1014,8 +1304,10 @@ window.App = (function () {
 
       html += '<div class="vocab-unit-section">';
       html += '<h3 class="vocab-unit-title">' + escapeHtml(unitName) + ' <span class="text-muted" style="font-size:0.85rem;font-weight:400">(' + words.length + '語)</span></h3>';
-      html += '<div class="vocab-table"><div class="vocab-table-header"><span>' + (isBricks ? '英単語' : '古語') + '</span><span>' + (isBricks ? '意味' : '現代語訳') + '</span></div>';
-      for (const [word, meaning] of words) {
+      html += '<div class="vocab-table"><div class="vocab-table-header"><span>' + (isEnglish ? '英単語' : '古語') + '</span><span>' + (isEnglish ? '意味' : '現代語訳') + '</span></div>';
+      for (const item of words) {
+        const word = Array.isArray(item) ? item[0] : `${item.num}. ${item.word}`;
+        const meaning = Array.isArray(item) ? item[1] : item.meaning;
         html += '<div class="vocab-row"><span class="vocab-word">' + escapeHtml(word) + '</span><span class="vocab-meaning">' + escapeHtml(meaning) + '</span></div>';
       }
       html += '</div></div>';
@@ -1385,7 +1677,7 @@ ${query}
     document.getElementById('edit-q-answer').value = q.answer;
     document.getElementById('edit-q-explanation').value = q.explanation || '';
     document.getElementById('edit-q-type').value = q.type;
-    document.getElementById('edit-q-diff').value = q.difficulty;
+    document.getElementById('edit-q-diff').value = q.difficulty || 1;
     const choicesGroup = document.getElementById('edit-q-choices-group');
     if (q.type === '選択' && q.choices) {
       choicesGroup.style.display = 'block';
@@ -1600,7 +1892,7 @@ ${query}
   }
 
   return {
-    quickStart: quickStartMixed, openWrongReviewModal, startWrongReview, openSubjectSetup, setQuizType, setDifficulty,
+    quickStart: quickStartMixed, openWrongReviewModal, startWrongReview, openSubjectSetup, setQuizType, setDifficulty, setQuizDirection,
     startQuizFromSetup, openQuestionList, selectChoice, selectTF, submitAnswer, nextQuestion, quitQuiz,
     retryQuiz, retryWrong, generateQuestions, saveGeneratedQuestions,
     toggleTheme, toggleSetting, updateQuestionCount,
