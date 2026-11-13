@@ -298,6 +298,33 @@
         { "id": "kobun330-ch4", "name": "第四章 入試重要語100" },
         { "id": "kobun330-ch5", "name": "第五章 入試攻略語50" }
       ]
+    },
+    {
+      "id": "target1900",
+      "name": "ターゲット1900 6訂版",
+      "category": "単語帳",
+      "textbook": { "name": "英単語ターゲット1900 6訂版", "code": "No.1〜1900", "publisher": "旺文社" },
+      "units": [
+        { "id": "target1900-u1", "name": "No.1〜100" },
+        { "id": "target1900-u2", "name": "No.101〜200" },
+        { "id": "target1900-u3", "name": "No.201〜300" },
+        { "id": "target1900-u4", "name": "No.301〜400" },
+        { "id": "target1900-u5", "name": "No.401〜500" },
+        { "id": "target1900-u6", "name": "No.501〜600" },
+        { "id": "target1900-u7", "name": "No.601〜700" },
+        { "id": "target1900-u8", "name": "No.701〜800" },
+        { "id": "target1900-u9", "name": "No.801〜900" },
+        { "id": "target1900-u10", "name": "No.901〜1000" },
+        { "id": "target1900-u11", "name": "No.1001〜1100" },
+        { "id": "target1900-u12", "name": "No.1101〜1200" },
+        { "id": "target1900-u13", "name": "No.1201〜1300" },
+        { "id": "target1900-u14", "name": "No.1301〜1400" },
+        { "id": "target1900-u15", "name": "No.1401〜1500" },
+        { "id": "target1900-u16", "name": "No.1501〜1600" },
+        { "id": "target1900-u17", "name": "No.1601〜1700" },
+        { "id": "target1900-u18", "name": "No.1701〜1800" },
+        { "id": "target1900-u19", "name": "No.1801〜1900" }
+      ]
     }
   ],
   "categories": [

@@ -20,6 +20,16 @@ window.UI = (function () {
         el.setAttribute('aria-hidden', 'true');
       }
     });
+    updateFooterVisibility(currentScreen);
+  }
+
+  // クイズ画面ではフッターのAbout/Contact等を非表示にする
+  function updateFooterVisibility(screenId) {
+    const footer = document.querySelector('.site-footer');
+    if (!footer) return;
+    const hideFooter = (screenId === 'quiz');
+    footer.hidden = hideFooter;
+    footer.style.display = hideFooter ? 'none' : '';
   }
 
   // --- 画面遷移 ---
@@ -48,6 +58,7 @@ window.UI = (function () {
 
     currentScreen = screenId;
     updateNavActive(screenId);
+    updateFooterVisibility(screenId);
 
     if (options && options.onEnter) {
       setTimeout(options.onEnter, (current && current !== next) ? 350 : 50);
@@ -61,6 +72,27 @@ window.UI = (function () {
         navigateTo(el.dataset.nav);
         if (typeof window.App !== 'undefined' && window.App.onNavigate) {
           window.App.onNavigate(el.dataset.nav);
+        }
+      });
+    });
+
+    // フッター内のページ内リンクはホーム画面へ遷移してからスクロールする
+    document.querySelectorAll('.site-footer-nav a[href^="#"]').forEach(link => {
+      link.addEventListener('click', (e) => {
+        const targetId = link.getAttribute('href').slice(1);
+        if (!targetId) return;
+        e.preventDefault();
+        const scrollToTarget = () => {
+          const targetEl = document.getElementById(targetId);
+          if (targetEl) targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        };
+        if (currentScreen !== 'home') {
+          navigateTo('home', { onEnter: scrollToTarget });
+          if (typeof window.App !== 'undefined' && window.App.onNavigate) {
+            window.App.onNavigate('home');
+          }
+        } else {
+          scrollToTarget();
         }
       });
     });
