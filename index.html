@@ -107,7 +107,7 @@
     </ul>
   </div>
 
-  <div class="last-updated-badge" style="margin-top: 14px;">最終更新日: <time datetime="2026-11-13">2026年11月13日</time></div>
+  <div class="last-updated-badge" style="margin-top: 14px;">最終更新日: <time datetime="2026-11-15">2026年11月15日</time></div>
 </section>
 
 <!-- Admin Message Block -->
@@ -405,9 +405,9 @@
 <div class="modal-content">
   <div class="modal-header"><h2 id="setup-subject-title">出題設定</h2><button class="modal-close" onclick="UI.closeModal('modal-subject-setup')">✕</button></div>
   <div class="form-group"><label class="form-label">単元を選択</label><select class="select" id="setup-unit"><option value="all">すべて</option></select></div>
-  <!-- ターゲット1900用 番号範囲指定 -->
+  <!-- 単語帳（ターゲット1900・古文単語330）用 番号範囲指定 -->
   <div class="form-group" id="setup-range-group-container" style="display:none">
-    <label class="form-label">出題番号の範囲指定（1〜1900）</label>
+    <label class="form-label" id="setup-range-label">出題番号の範囲指定（1〜1900）</label>
     <div style="display:flex;align-items:center;gap:8px">
       <input type="number" class="input" id="setup-range-start" min="1" max="1900" value="1" style="flex:1;text-align:center" aria-label="開始番号">
       <span style="font-weight:700;color:var(--text-secondary)">〜</span>
@@ -644,7 +644,7 @@
 <script src="modules/storage.js?v=3"></script>
 <script src="modules/ui.js?v=5"></script>
 <script src="modules/questionGenerator.js?v=3"></script>
-<script src="script.js?v=10"></script>
+<script src="script.js?v=11"></script>
 <!-- <script type="module" src="main.js"></script> Firebase機能一時使用禁止中 -->
 <svg width="0" height="0" style="position:absolute">
   <defs>

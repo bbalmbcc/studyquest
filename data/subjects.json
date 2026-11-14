@@ -290,13 +290,13 @@
       "id": "kobun330",
       "name": "古文単語330",
       "category": "単語帳",
-      "textbook": { "name": "わかる・読める・解ける Key＆Point 古文単語330 四訂版", "code": "", "publisher": "いいずな書店" },
+      "textbook": { "name": "わかる・読める・解ける Key＆Point 古文単語330 四訂版", "code": "No.1〜330", "publisher": "いいずな書店" },
       "units": [
-        { "id": "kobun330-ch1", "name": "第一章 読解必修語50" },
-        { "id": "kobun330-ch2", "name": "第二章 入試必修語100" },
-        { "id": "kobun330-ch3", "name": "第三章 最重要敬語30" },
-        { "id": "kobun330-ch4", "name": "第四章 入試重要語100" },
-        { "id": "kobun330-ch5", "name": "第五章 入試攻略語50" }
+        { "id": "kobun330-ch1", "name": "第一章 読解必修語50 (No.1〜50)" },
+        { "id": "kobun330-ch2", "name": "第二章 入試必修語100 (No.51〜150)" },
+        { "id": "kobun330-ch3", "name": "第三章 最重要敬語30 (No.151〜180)" },
+        { "id": "kobun330-ch4", "name": "第四章 入試重要語100 (No.181〜280)" },
+        { "id": "kobun330-ch5", "name": "第五章 入試攻略語50 (No.281〜330)" }
       ]
     },
     {
