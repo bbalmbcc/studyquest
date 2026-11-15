@@ -148,18 +148,6 @@
       ]
     },
     {
-      "id": "katei",
-      "name": "家庭基礎",
-      "category": "家庭",
-      "textbook": { "name": "新Agenda 家庭基礎", "code": "家基 007-902", "publisher": "実教出版" },
-      "units": [
-        { "id": "katei-u1", "name": "食生活" },
-        { "id": "katei-u2", "name": "衣生活" },
-        { "id": "katei-u3", "name": "住生活" },
-        { "id": "katei-u4", "name": "消費生活と環境" }
-      ]
-    },
-    {
       "id": "eigo_c1",
       "name": "英語コミュニケーションⅠ",
       "category": "英語",
@@ -239,54 +227,6 @@
       ]
     },
     {
-      "id": "bricks1",
-      "name": "英単語・熟語 Bricks 1",
-      "category": "単語帳",
-      "textbook": { "name": "英単語・熟語 Bricks 1", "code": "", "publisher": "いいずな書店" },
-      "units": [
-        { "id": "bricks1-s1u1", "name": "Stage 1 - Unit 1" },
-        { "id": "bricks1-s1u2", "name": "Stage 1 - Unit 2" },
-        { "id": "bricks1-s1u3", "name": "Stage 1 - Unit 3" },
-        { "id": "bricks1-s1u4", "name": "Stage 1 - Unit 4" },
-        { "id": "bricks1-s1u5", "name": "Stage 1 - Unit 5" },
-        { "id": "bricks1-s2u1", "name": "Stage 2 - Unit 1" },
-        { "id": "bricks1-s2u2", "name": "Stage 2 - Unit 2" },
-        { "id": "bricks1-s2u3", "name": "Stage 2 - Unit 3" },
-        { "id": "bricks1-s2u4", "name": "Stage 2 - Unit 4" },
-        { "id": "bricks1-s2u5", "name": "Stage 2 - Unit 5" },
-        { "id": "bricks1-s3u1", "name": "Stage 3 - Unit 1" },
-        { "id": "bricks1-s3u2", "name": "Stage 3 - Unit 2" },
-        { "id": "bricks1-s3u3", "name": "Stage 3 - Unit 3" },
-        { "id": "bricks1-s3u4", "name": "Stage 3 - Unit 4" },
-        { "id": "bricks1-s3u5", "name": "Stage 3 - Unit 5" },
-        { "id": "bricks1-s4u1", "name": "Stage 4 - Unit 1" },
-        { "id": "bricks1-s4u2", "name": "Stage 4 - Unit 2" },
-        { "id": "bricks1-s4u3", "name": "Stage 4 - Unit 3" },
-        { "id": "bricks1-s4u4", "name": "Stage 4 - Unit 4" },
-        { "id": "bricks1-s4u5", "name": "Stage 4 - Unit 5" },
-        { "id": "bricks1-s5u1", "name": "Stage 5 - Unit 1" },
-        { "id": "bricks1-s5u2", "name": "Stage 5 - Unit 2" },
-        { "id": "bricks1-s5u3", "name": "Stage 5 - Unit 3" },
-        { "id": "bricks1-s5u4", "name": "Stage 5 - Unit 4" },
-        { "id": "bricks1-s5u5", "name": "Stage 5 - Unit 5" },
-        { "id": "bricks1-s6u1", "name": "Stage 6 - Unit 1" },
-        { "id": "bricks1-s6u2", "name": "Stage 6 - Unit 2" },
-        { "id": "bricks1-s6u3", "name": "Stage 6 - Unit 3" },
-        { "id": "bricks1-s6u4", "name": "Stage 6 - Unit 4" },
-        { "id": "bricks1-s6u5", "name": "Stage 6 - Unit 5" },
-        { "id": "bricks1-s6u6", "name": "Stage 6 - Unit 6" },
-        { "id": "bricks1-s6u7", "name": "Stage 6 - Unit 7" },
-        { "id": "bricks1-s6u8", "name": "Stage 6 - Unit 8" },
-        { "id": "bricks1-s6u9", "name": "Stage 6 - Unit 9" },
-        { "id": "bricks1-s6u10", "name": "Stage 6 - Unit 10" },
-        { "id": "bricks1-s6u11", "name": "Stage 6 - Unit 11" },
-        { "id": "bricks1-s6u12", "name": "Stage 6 - Unit 12" },
-        { "id": "bricks1-s6u13", "name": "Stage 6 - Unit 13" },
-        { "id": "bricks1-s6u14", "name": "Stage 6 - Unit 14" },
-        { "id": "bricks1-s6u15", "name": "Stage 6 - Unit 15" }
-      ]
-    },
-    {
       "id": "kobun330",
       "name": "古文単語330",
       "category": "単語帳",
@@ -325,6 +265,31 @@
         { "id": "target1900-u18", "name": "No.1701〜1800" },
         { "id": "target1900-u19", "name": "No.1801〜1900" }
       ]
+    },
+    {
+      "id": "eiken_pre1_ex",
+      "name": "英検準1級 単熟語EX",
+      "category": "単語帳",
+      "textbook": { "name": "英検準1級 単熟語EX", "code": "No.1〜1680", "publisher": "ジャパンタイムズ出版" },
+      "units": [
+        { "id": "eiken_pre1_ex-u1", "name": "No.1〜100" },
+        { "id": "eiken_pre1_ex-u2", "name": "No.101〜200" },
+        { "id": "eiken_pre1_ex-u3", "name": "No.201〜300" },
+        { "id": "eiken_pre1_ex-u4", "name": "No.301〜400" },
+        { "id": "eiken_pre1_ex-u5", "name": "No.401〜500" },
+        { "id": "eiken_pre1_ex-u6", "name": "No.501〜600" },
+        { "id": "eiken_pre1_ex-u7", "name": "No.601〜700" },
+        { "id": "eiken_pre1_ex-u8", "name": "No.701〜800" },
+        { "id": "eiken_pre1_ex-u9", "name": "No.801〜900" },
+        { "id": "eiken_pre1_ex-u10", "name": "No.901〜1000" },
+        { "id": "eiken_pre1_ex-u11", "name": "No.1001〜1100" },
+        { "id": "eiken_pre1_ex-u12", "name": "No.1101〜1200" },
+        { "id": "eiken_pre1_ex-u13", "name": "No.1201〜1300" },
+        { "id": "eiken_pre1_ex-u14", "name": "No.1301〜1400" },
+        { "id": "eiken_pre1_ex-u15", "name": "No.1401〜1500" },
+        { "id": "eiken_pre1_ex-u16", "name": "No.1501〜1600" },
+        { "id": "eiken_pre1_ex-u17", "name": "No.1601〜1680" }
+      ]
     }
   ],
   "categories": [
@@ -334,7 +299,6 @@
     { "id": "英語", "color": "#FFB347", "icon": "globe" },
     { "id": "社会", "color": "#4ECDC4", "icon": "landmark" },
     { "id": "情報", "color": "#45B7D1", "icon": "cpu" },
-    { "id": "家庭", "color": "#F7DC6F", "icon": "home" },
     { "id": "単語帳", "color": "#E056A0", "icon": "spell-check" }
   ]
 }

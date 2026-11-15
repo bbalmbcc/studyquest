@@ -12,6 +12,18 @@ window.App = (function () {
   let questionEditMode = false;
   let vocabCache = {};
 
+  // 英語単語帳向けの出題文テンプレート生成ヘルパー
+  function createEnglishVocabPrompts() {
+    return {
+      ejChoice: (w) => `No.${w.num} 「${w.word}」の意味は？`,
+      ejWrite: (w) => `No.${w.num} 「${w.word}」の意味を日本語で答えよ。`,
+      ejTF: (w, m) => `No.${w.num} 「${w.word}」は「${m}」という意味である。`,
+      jeChoice: (w) => `No.${w.num} 「${w.meaning}」を表す英単語は？`,
+      jeWrite: (w) => `No.${w.num} 「${w.meaning}」を英語で答えよ。`,
+      jeTF: (w, wd) => `No.${w.num} 「${w.meaning}」を表す英単語は「${wd}」である。`
+    };
+  }
+
   // 番号範囲・出題方向対応の単語帳定義
   const VOCAB_BOOK_CONFIG = {
     target1900: {
@@ -21,14 +33,16 @@ window.App = (function () {
       dirSummary: { ej: '英語→日本語', je: '日本語→英語', random: 'ランダム' },
       dirButtonLabels: { ej: '🇬🇧→🇯🇵 英語→日本語', je: '🇯🇵→🇬🇧 日本語→英語' },
       dirShort: { ej: '英→日', je: '日→英' },
-      prompts: {
-        ejChoice: (w) => `No.${w.num} 「${w.word}」の意味は？`,
-        ejWrite: (w) => `No.${w.num} 「${w.word}」の意味を日本語で答えよ。`,
-        ejTF: (w, m) => `No.${w.num} 「${w.word}」は「${m}」という意味である。`,
-        jeChoice: (w) => `No.${w.num} 「${w.meaning}」を表す英単語は？`,
-        jeWrite: (w) => `No.${w.num} 「${w.meaning}」を英語で答えよ。`,
-        jeTF: (w, wd) => `No.${w.num} 「${w.meaning}」を表す英単語は「${wd}」である。`
-      }
+      prompts: createEnglishVocabPrompts()
+    },
+    eiken_pre1_ex: {
+      file: 'data/vocab_eiken_pre1_ex.json',
+      maxNum: 1680,
+      isEnglish: true,
+      dirSummary: { ej: '英語→日本語', je: '日本語→英語', random: 'ランダム' },
+      dirButtonLabels: { ej: '🇬🇧→🇯🇵 英語→日本語', je: '🇯🇵→🇬🇧 日本語→英語' },
+      dirShort: { ej: '英→日', je: '日→英' },
+      prompts: createEnglishVocabPrompts()
     },
     kobun330: {
       file: 'data/vocab_kobun330.json',
@@ -80,7 +94,7 @@ window.App = (function () {
     // Firebase同期はmain.js (ES Module) が担当
   }
 
-  // 単語帳データから決定論的に問題群を構築する（ターゲット1900・古文単語330共通）
+  // 単語帳データから決定論的に問題群を構築する（VOCAB_BOOK_CONFIG共通）
   function buildVocabBookQuestions(subjectId, vocabJson) {
     const cfg = getVocabBookConfig(subjectId);
     if (!cfg || !vocabJson || !vocabJson.units) return [];
@@ -95,33 +109,78 @@ window.App = (function () {
     const total = flatWords.length;
     if (total < 4) return [];
 
-    const stripNotes = (s) => s
-      .replace(/[\(（〔［＜<][^)）〕］＞>]*[\)）〕］＞>]/g, '')
-      .replace(/^(を|に|へ|と|から|より|で)/, '')
-      .trim();
+    // 括弧で囲まれた補足・用法・同義語/反意語注記を入れ子も含めて除去する
+    const BRACKET_PAIR_PATTERNS = [
+      /\([^()]*\)/g,
+      /（[^（）]*）/g,
+      /〔[^〔〕]*〕/g,
+      /［[^［］]*］/g,
+      /\[[^\[\]]*\]/g,
+      /＜[^＜＞]*＞/g,
+      /《[^《》]*》/g,
+      /<[^<>]*>/g
+    ];
+    const stripBrackets = (s) => {
+      let cur = s;
+      let prev;
+      do {
+        prev = cur;
+        for (const re of BRACKET_PAIR_PATTERNS) {
+          cur = cur.replace(re, '');
+        }
+      } while (cur !== prev);
+      return cur.replace(/\s+/g, ' ').trim();
+    };
+
+    // 先頭の「〜」や格助詞を、単語本来の語頭（例: とても、からかう、におい）を壊さない範囲で除去する
+    const stripLeadingParticle = (s) => {
+      let t = s.trim();
+      if (/^[〜～]/.test(t)) {
+        t = t.replace(/^[〜～]+/, '').trim();
+        t = t.replace(/^(?:での|への|からの|を|に|へ|と|から|より|で)/, '').trim();
+        return t;
+      }
+      if (!cfg.isEnglish) return t;
+      if (/^を/.test(t)) return t.replace(/^を/, '').trim();
+      if (/^に/.test(t) && t !== 'におい') return t.replace(/^に/, '').trim();
+      if (/^(?:での|への|からの)/.test(t)) return t.replace(/^(?:での|への|からの)/, '').trim();
+      if (/^より(?:すぐ|優|劣|長)/.test(t)) return t.replace(/^より/, '').trim();
+      if (/^(?:と|から)(?=[\u4E00-\u9FFF])/.test(t)) return t.replace(/^(?:と|から)/, '').trim();
+      return t;
+    };
+
+    const isValidAltMeaning = (t) => Boolean(t && !/^[〜～・]+$/.test(t) && (t.length >= 2 || /^[\u4E00-\u9FFF]$/.test(t)));
 
     const addSubMeanings = (alts, baseText, allowSpaceSplit) => {
-      const splitRe = allowSpaceSplit ? /[,，、\s　]+/ : /[,，、]+/;
+      const splitRe = allowSpaceSplit ? /[,，、/／\s　]+/ : /[,，、/／]+/;
       for (const sub of baseText.split(splitRe)) {
         const t = sub.trim();
-        if (t && t.length >= 2 && !/^[〜～・]+$/.test(t)) {
+        if (isValidAltMeaning(t)) {
           alts.add(t);
-          const t2 = stripNotes(t);
-          if (t2 && t2.length >= 2) alts.add(t2);
+          const noTilde = t.replace(/^[〜～]+/, '').trim();
+          if (isValidAltMeaning(noTilde)) alts.add(noTilde);
+          const t2 = stripLeadingParticle(t);
+          if (isValidAltMeaning(t2)) alts.add(t2);
         }
       }
     };
 
     const buildAltMeanings = (entry) => {
       const alts = new Set();
+      if (entry.meaning) {
+        const fullNoNotes = stripBrackets(entry.meaning);
+        if (fullNoNotes) alts.add(fullNoNotes);
+      }
       const rawList = Array.isArray(entry.meanings) && entry.meanings.length > 0 ? entry.meanings : [entry.meaning];
       for (const m of rawList) {
         if (!m) continue;
         alts.add(m);
-        const noNotes = m.replace(/[\(（〔［＜<][^)）〕］＞>]*[\)）〕］＞>]/g, '').trim();
+        const noNotes = stripBrackets(m);
         if (noNotes) alts.add(noNotes);
-        const stripped = stripNotes(m);
-        if (stripped) alts.add(stripped);
+        const noTilde = noNotes.replace(/^[〜～]+/, '').trim();
+        if (isValidAltMeaning(noTilde)) alts.add(noTilde);
+        const stripped = stripLeadingParticle(noNotes);
+        if (isValidAltMeaning(stripped)) alts.add(stripped);
         addSubMeanings(alts, noNotes, !cfg.isEnglish);
       }
       alts.delete(entry.meaning);
@@ -181,7 +240,8 @@ window.App = (function () {
     for (let i = 0; i < total; i++) {
       const w = flatWords[i];
       const wrongs = pickWrongIndices(i);
-      const exp = `No.${w.num} ${w.word}：${w.meaning}`;
+      if (wrongs.length === 0) continue;
+      const exp = `No.${w.num} ${w.word}：${w.rawMeaning || w.meaning}`;
       const altMeanings = buildAltMeanings(w);
       const altWords = buildAltHeadwords(w);
 
@@ -337,12 +397,12 @@ window.App = (function () {
   }
 
   function getCategoryColor(cat) {
-    const colors = { '数学': '#6C63FF', '国語': '#FF6B9D', '理科': '#00D4AA', '英語': '#FFB347', '社会': '#4ECDC4', '情報': '#45B7D1', '家庭': '#F7DC6F', '単語帳': '#E056A0' };
+    const colors = { '数学': '#6C63FF', '国語': '#FF6B9D', '理科': '#00D4AA', '英語': '#FFB347', '社会': '#4ECDC4', '情報': '#45B7D1', '単語帳': '#E056A0' };
     return colors[cat] || '#6C63FF';
   }
 
   function getCategoryEmoji(cat) {
-    const emojis = { '数学': '∑', '国語': '文', '理科': '🧪', '英語': 'A', '社会': '🌍', '情報': '💻', '家庭': '🏠', '単語帳': '📖' };
+    const emojis = { '数学': '∑', '国語': '文', '理科': '🧪', '英語': 'A', '社会': '🌍', '情報': '💻', '単語帳': '📖' };
     return emojis[cat] || '📚';
   }
 
@@ -394,10 +454,11 @@ window.App = (function () {
       const emoji = getCategoryEmoji(s.category);
       const st = stats[s.id] || { total: 0, correct: 0, rate: 0 };
       const qCount = allQuestions.filter(q => q.subjectId === s.id).length;
+      const metaText = s.textbook ? [s.textbook.publisher, s.textbook.code].filter(Boolean).join(' / ') : '';
       return '<div class="card subject-card" style="--subject-color:' + color + '" onclick="App.openSubjectSetup(\'' + s.id + '\')">' +
         '<div class="subject-icon" style="--subject-color:' + color + '">' + emoji + '</div>' +
-        '<div class="subject-name">' + s.name + '</div>' +
-        '<div class="subject-meta">' + s.textbook.publisher + ' / ' + s.textbook.code + '</div>' +
+        '<div class="subject-name">' + escapeHtml(s.name) + '</div>' +
+        '<div class="subject-meta">' + escapeHtml(metaText) + '</div>' +
         '<div class="subject-stats"><span>📝 ' + qCount + '問</span><span>✅ ' + st.rate + '%</span></div></div>';
     }).join('');
   }
@@ -510,7 +571,7 @@ window.App = (function () {
 
     // 単語帳教科の場合は「単語一覧を見る」ボタンを表示
     const vocabBtn = document.getElementById('btn-vocab-list');
-    vocabBtn.style.display = (subjectId === 'bricks1' || isRangeVocab) ? 'block' : 'none';
+    if (vocabBtn) vocabBtn.style.display = isRangeVocab ? 'block' : 'none';
 
     // 単元変更時にもサマリーと番号範囲を連動更新
     unitSelect.onchange = function() {
@@ -522,9 +583,14 @@ window.App = (function () {
           const cached = vocabCache[subjectId];
           const unitWords = cached && cached.units ? cached.units[unitSelect.value] : null;
           if (unitWords && unitWords.length > 0) {
-            const nums = unitWords.map(w => w.num);
-            rangeStartEl.value = Math.min(...nums);
-            rangeEndEl.value = Math.max(...nums);
+            let minN = Infinity;
+            let maxN = -Infinity;
+            for (const w of unitWords) {
+              if (w.num < minN) minN = w.num;
+              if (w.num > maxN) maxN = w.num;
+            }
+            rangeStartEl.value = minN;
+            rangeEndEl.value = maxN;
           }
         }
       }
@@ -1388,15 +1454,13 @@ window.App = (function () {
     if (vocabCache[selectedSubjectId]) {
       vocabData = vocabCache[selectedSubjectId];
     } else {
-      const vocabFiles = {
-        bricks1: 'data/vocab_bricks1.json',
-        kobun330: 'data/vocab_kobun330.json',
-        target1900: 'data/vocab_target1900.json'
-      };
-      const file = vocabFiles[selectedSubjectId] || 'data/vocab_kobun330.json';
+      const cfg = getVocabBookConfig(selectedSubjectId);
+      if (!cfg || !cfg.file) { UI.showToast('単語データが見つかりません', 'error'); return; }
       try {
-        const res = await fetch(file + '?t=' + Date.now());
+        const res = await fetch(cfg.file + '?t=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
         vocabData = await res.json();
+        vocabCache[selectedSubjectId] = vocabData;
       } catch(e) { UI.showToast('単語データを読み込めませんでした', 'error'); return; }
     }
 
@@ -1413,11 +1477,26 @@ window.App = (function () {
     const subj = subjects.find(s => s.id === selectedSubjectId);
     const container = document.getElementById('vocab-container');
     const statsEl = document.getElementById('vocab-stats');
+    if (!vocabData || !vocabData.units) {
+      statsEl.textContent = '全 0 語';
+      container.innerHTML = '<p class="text-muted" style="text-align:center;padding:20px">単語データがありません</p>';
+      return;
+    }
+
     let html = '';
     let totalCount = 0;
 
-    const unitsToShow = unitId === 'all' ? Object.keys(vocabData.units) : [unitId];
-    const isEnglish = selectedSubjectId === 'bricks1' || selectedSubjectId === 'target1900';
+    let unitsToShow;
+    if (unitId === 'all') {
+      const orderedIds = subj ? subj.units.map(u => u.id).filter(id => vocabData.units[id]) : [];
+      const extraIds = Object.keys(vocabData.units).filter(id => !orderedIds.includes(id));
+      unitsToShow = orderedIds.concat(extraIds);
+    } else {
+      unitsToShow = [unitId];
+    }
+
+    const cfg = getVocabBookConfig(selectedSubjectId);
+    const isEnglish = cfg ? cfg.isEnglish : false;
 
     for (const uid of unitsToShow) {
       const words = vocabData.units[uid];
@@ -1431,7 +1510,8 @@ window.App = (function () {
       html += '<div class="vocab-table"><div class="vocab-table-header"><span>' + (isEnglish ? '英単語' : '古語') + '</span><span>' + (isEnglish ? '意味' : '現代語訳') + '</span></div>';
       for (const item of words) {
         const word = Array.isArray(item) ? item[0] : `${item.num}. ${item.word}`;
-        const meaning = Array.isArray(item) ? item[1] : item.meaning;
+        // rawMeaningがある場合は品詞タグや補足を含めた学習用リファレンスを表示する
+        const meaning = Array.isArray(item) ? item[1] : (item.rawMeaning || item.meaning);
         html += '<div class="vocab-row"><span class="vocab-word">' + escapeHtml(word) + '</span><span class="vocab-meaning">' + escapeHtml(meaning) + '</span></div>';
       }
       html += '</div></div>';

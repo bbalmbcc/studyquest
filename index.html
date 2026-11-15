@@ -94,7 +94,7 @@
 <section class="card" style="padding: 20px; margin-bottom: 24px; border-left: 4px solid var(--accent); background: var(--bg-card);" aria-label="サイトについて">
   <h2 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--accent);">StudyQuestへようこそ</h2>
   <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-primary);">
-    StudyQuest（スタディクエスト）は、高校生の日常学習や定期試験対策、単語テストの自学自習を効率化するためのWeb学習支援プラットフォームです。古文単語（古文単語330）や英単語（Bricks）のチェック、選択式・記述問題の演習、誤答復習をブラウザ上で完全オフライン対応にて利用できます。弱点分野のリアルタイム把握や試験前の効率的な復習により、着実な学力向上をサポートします。
+    StudyQuest（スタディクエスト）は、高校生の日常学習や定期試験対策、単語テストの自学自習を効率化するためのWeb学習支援プラットフォームです。古文単語（古文単語330）や英単語（ターゲット1900 6訂版・英検準1級 単熟語EX）のチェック、選択式・記述問題の演習、誤答復習をブラウザ上で完全オフライン対応にて利用できます。弱点分野のリアルタイム把握や試験前の効率的な復習により、着実な学力向上をサポートします。
   </p>
   
   <!-- クローラー向け静的教科・コンテンツ一覧 (i-FILTER不確定サイト対策) -->
@@ -102,7 +102,7 @@
     <h3 style="font-size: 0.95rem; font-weight: 700; margin-bottom: 8px; color: var(--accent);">📖 対応教科・収録コンテンツ一覧</h3>
     <ul style="padding-left: 20px; line-height: 1.8; font-size: 0.9rem; color: var(--text-primary); margin: 0;">
       <li><strong>国語・古典</strong>：古文単語（古文単語330 等）、現代文重要語句、漢文句形演習</li>
-      <li><strong>英語</strong>：英単語・熟語（Bricks 1・ターゲット1900 6訂版 等）、英文法、定期試験対策問題</li>
+      <li><strong>英語</strong>：英単語・熟語（ターゲット1900 6訂版・英検準1級 単熟語EX 等）、英文法、定期試験対策問題</li>
       <li><strong>数学・理科・社会</strong>：高校定期試験に向けた選択問題・記述問題・一問一答演習</li>
     </ul>
   </div>
@@ -161,13 +161,13 @@
     </h2>
     <h3 style="font-size: 1rem; font-weight: 600; margin-bottom: 8px;">StudyQuest（スタディクエスト）</h3>
     <p style="font-size: 0.95rem; line-height: 1.7; color: var(--text-primary); margin-bottom: 12px;">
-      StudyQuestは、高校生の日常学習や定期試験対策、単語テスト（古文単語330、英単語Bricks、ターゲット1900 6訂版等）の自学自習を支援する無料の教育用Webアプリケーションです。オフライン対応の単語チェック、選択式・記述式・○×形式の問題演習、間違い復習をブラウザ単体で手軽に実践できます。
+      StudyQuestは、高校生の日常学習や定期試験対策、単語テスト（古文単語330、ターゲット1900 6訂版、英検準1級 単熟語EX等）の自学自習を支援する無料の教育用Webアプリケーションです。オフライン対応の単語チェック、選択式・記述式・○×形式の問題演習、間違い復習をブラウザ単体で手軽に実践できます。
     </p>
     <ul style="font-size: 0.9rem; line-height: 1.8; color: var(--text-secondary); margin: 0; padding-left: 20px;">
       <li><strong>サイト目的</strong>: 高校生の定期試験対策および基礎学力の定着支援</li>
       <li><strong>運営者</strong>: bbalmbcc (StudyQuest 運営チーム)</li>
       <li><strong>料金</strong>: 完全無料（課金要素やゲーム要素は一切ありません）</li>
-      <li><strong>最終更新日</strong>: 2026年11月13日</li>
+      <li><strong>最終更新日</strong>: 2026年11月15日</li>
     </ul>
     <div style="margin-top: 12px;">
       <a href="about/" style="font-size: 0.85rem; color: var(--accent); text-decoration: underline;">📄 詳細なAboutページはこちら</a>
@@ -265,7 +265,7 @@
   <div class="card subject-card" style="padding:16px;">
     <div style="font-size:1.8rem;margin-bottom:8px">🇬🇧</div>
     <div style="font-weight:700;font-size:1.1rem;margin-bottom:4px">英語</div>
-    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">Bricks 1・2、英単語・熟語、英文法演習</p>
+    <p style="font-size:0.85rem;color:var(--text-secondary);margin:0">ターゲット1900 6訂版・英検準1級 単熟語EX、英文法演習</p>
   </div>
   <div class="card subject-card" style="padding:16px;">
     <div style="font-size:1.8rem;margin-bottom:8px">📐</div>
@@ -405,7 +405,7 @@
 <div class="modal-content">
   <div class="modal-header"><h2 id="setup-subject-title">出題設定</h2><button class="modal-close" onclick="UI.closeModal('modal-subject-setup')">✕</button></div>
   <div class="form-group"><label class="form-label">単元を選択</label><select class="select" id="setup-unit"><option value="all">すべて</option></select></div>
-  <!-- 単語帳（ターゲット1900・古文単語330）用 番号範囲指定 -->
+  <!-- 単語帳（ターゲット1900・英検準1級 単熟語EX・古文単語330）用 番号範囲指定 -->
   <div class="form-group" id="setup-range-group-container" style="display:none">
     <label class="form-label" id="setup-range-label">出題番号の範囲指定（1〜1900）</label>
     <div style="display:flex;align-items:center;gap:8px">
@@ -415,7 +415,7 @@
     </div>
     <div class="text-muted" style="font-size:0.75rem;margin-top:4px">※ 単元選択と連動します。任意の番号範囲で出題できます。</div>
   </div>
-  <!-- ターゲット1900用 出題方式選択 -->
+  <!-- 単語帳用 出題方式選択 -->
   <div class="form-group" id="setup-direction-group-container" style="display:none">
     <label class="form-label">出題方式</label>
     <div class="filter-btn-group" id="filter-direction-group">
@@ -644,7 +644,7 @@
 <script src="modules/storage.js?v=3"></script>
 <script src="modules/ui.js?v=5"></script>
 <script src="modules/questionGenerator.js?v=3"></script>
-<script src="script.js?v=11"></script>
+<script src="script.js?v=12"></script>
 <!-- <script type="module" src="main.js"></script> Firebase機能一時使用禁止中 -->
 <svg width="0" height="0" style="position:absolute">
   <defs>
